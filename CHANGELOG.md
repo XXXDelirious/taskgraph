@@ -18,6 +18,15 @@ Task before the fork is kept, unchanged, at the bottom of this file.
   `mcp:` task key hides tasks or sets tool hints (`read_only`, `destructive`,
   `idempotent`). Implements the long-standing upstream request
   go-task/task#2324.
+- Added `--profile <file>`, which writes a timeline of the run in the Chrome
+  trace format (for ui.perfetto.dev) and prints the critical path and the
+  slowest tasks.
+- Added OpenTelemetry tracing: when `OTEL_EXPORTER_OTLP_ENDPOINT` (or the
+  traces-specific variable) is set, spans for the run, each task, dependency
+  waits, up-to-date checks and each command are exported over OTLP
+  (http/protobuf or grpc). An incoming `TRACEPARENT` is used as the parent,
+  and commands get `TRACEPARENT` so tools they run can join the trace.
+  Implements the upstream feature request go-task/task#2948.
 - Added `--affected` (with optional `--since <ref>`) to run only the given
   tasks that are affected by changes in git, or, with no task names, to list
   the affected tasks (`--json` for CI). A task is affected when a changed file

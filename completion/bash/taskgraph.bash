@@ -26,7 +26,7 @@ function _task()
       _filedir -d
       return $?
     ;;
-    --cacert|--cert|--cert-key)
+    --cacert|--cert|--cert-key|--profile)
       _filedir
       return $?
     ;;

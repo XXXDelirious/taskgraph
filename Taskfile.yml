@@ -144,6 +144,8 @@ tasks:
     desc: Runs test suite with signals and watch tests included
     deps: [sleepit:build, gotestsum:install]
     cmds:
+      # The signals tests run the taskgraph binary from bin/.
+      - go build -o {{.BIN}}/taskgraph{{exeExt}} ./cmd/taskgraph
       - gotestsum -f '{{.GOTESTSUM_FORMAT}}' -tags 'signals watch' ./...
 
   goreleaser:test:

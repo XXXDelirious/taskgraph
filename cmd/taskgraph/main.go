@@ -10,8 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/pflag"
+	"go.opentelemetry.io/otel/trace"
 
 	task "github.com/XXXDelirious/taskgraph"
 	"github.com/XXXDelirious/taskgraph/args"
@@ -20,6 +22,7 @@ import (
 	"github.com/XXXDelirious/taskgraph/internal/filepathext"
 	"github.com/XXXDelirious/taskgraph/internal/flags"
 	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/tracing"
 	"github.com/XXXDelirious/taskgraph/internal/version"
 	"github.com/XXXDelirious/taskgraph/mcpserver"
 	"github.com/XXXDelirious/taskgraph/taskfile/ast"
@@ -135,9 +138,13 @@ func run() error {
 		return runMCPServer()
 	}
 
+	tracer, shutdownTracing := setupTracing(log)
+	defer shutdownTracing()
+
 	e := task.NewExecutor(
 		flags.WithFlags(),
 		task.WithVersionCheck(true),
+		task.WithTracer(tracer),
 	)
 	if err := e.Setup(); err != nil {
 		return err
@@ -247,7 +254,83 @@ func run() error {
 		return e.Status(ctx, calls...)
 	}
 
-	return e.Run(ctx, calls...)
+	return runTraced(ctx, e, tracer, log, calls)
+}
+
+// setupTracing creates a tracer when --profile is set or the OpenTelemetry
+// environment variables ask for traces. Tracing is off in watch mode, where
+// runs never end. The returned function flushes exported spans.
+func setupTracing(log *logger.Logger) (*tracing.Tracer, func()) {
+	noop := func() {}
+	if flags.Watch || (flags.Profile == "" && !tracing.OTelEnabled()) {
+		return nil, noop
+	}
+
+	shutdown := noop
+	var otelTracer trace.Tracer
+	if tracing.OTelEnabled() {
+		t, shutdownOTel, err := tracing.SetupOTel(context.Background(), version.GetVersion())
+		if err != nil {
+			log.Warnf("task: OpenTelemetry tracing disabled: %v\n", err)
+		} else {
+			otelTracer = t
+			shutdown = func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := shutdownOTel(ctx); err != nil {
+					log.Warnf("task: could not export OpenTelemetry traces: %v\n", err)
+				}
+			}
+		}
+	}
+	return tracing.New(flags.Profile != "", otelTracer), shutdown
+}
+
+// runTraced runs the calls inside a root span, then writes the profile if
+// one was asked for.
+func runTraced(ctx context.Context, e *task.Executor, tracer *tracing.Tracer, log *logger.Logger, calls []*task.Call) error {
+	if tracer == nil {
+		return e.Run(ctx, calls...)
+	}
+
+	names := make([]string, 0, len(calls))
+	for _, c := range calls {
+		names = append(names, c.Task)
+	}
+	// Join the caller's trace when one is passed in, e.g. from CI.
+	ctx = tracing.ContextWithTraceParent(ctx, os.Getenv("TRACEPARENT"))
+	ctx, root := tracer.Start(ctx, tracing.KindRun, "taskgraph "+strings.Join(names, " "))
+	err := e.Run(ctx, calls...)
+	root.Finish(err)
+
+	if flags.Profile != "" {
+		if perr := writeProfile(flags.Profile, tracer.Spans(), log); perr != nil {
+			log.Warnf("task: could not write profile: %v\n", perr)
+		}
+	}
+	return err
+}
+
+func writeProfile(path string, spans []*tracing.Span, log *logger.Logger) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	if err := tracing.WriteChromeTrace(f, spans); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "\ntask: Profile written to %s (open it in https://ui.perfetto.dev)\n\n", path)
+	if err := tracing.Summarize(spans, 5).WriteSummary(&b); err != nil {
+		return err
+	}
+	log.Errf(logger.Default, "%s", b.String())
+	return nil
 }
 
 // runMCPServer serves the Taskfile over MCP on stdin/stdout. Nothing else may

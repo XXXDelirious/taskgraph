@@ -61,6 +61,7 @@ Register-ArgumentCompleter -CommandName $cmdNames -ScriptBlock {
 			[CompletionResult]::new('--mcp', '--mcp', [CompletionResultType]::ParameterName, 'serve tasks as tools over MCP'),
 			[CompletionResult]::new('--affected', '--affected', [CompletionResultType]::ParameterName, 'only tasks affected by git changes'),
 			[CompletionResult]::new('--since', '--since', [CompletionResultType]::ParameterName, 'with --affected, compare with this git ref'),
+			[CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'write a trace of the run to this file'),
 			[CompletionResult]::new('-t', '-t', [CompletionResultType]::ParameterName, 'choose Taskfile'),
 			[CompletionResult]::new('--taskfile', '--taskfile', [CompletionResultType]::ParameterName, 'choose Taskfile'),
 			[CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'verbose output'),

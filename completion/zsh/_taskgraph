@@ -105,6 +105,7 @@ _task() {
         '(--mcp)--mcp[serve tasks as tools over the Model Context Protocol]'
         '(--affected)--affected[run or list only tasks affected by git changes]'
         '(--since)--since[with --affected, compare with this git ref]:ref: '
+        '(--profile)--profile[write a trace of the run to this file]:file:_files'
         '(-t --taskfile)'{-t,--taskfile}'[specify a different taskfile]:taskfile:_files'
         '(-v --verbose)'{-v,--verbose}'[verbose mode]'
         '(-w --watch)'{-w,--watch}'[watch-mode for given tasks, re-run when inputs change]'

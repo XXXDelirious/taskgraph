@@ -93,6 +93,7 @@ var (
 	MCP                 bool
 	Affected            bool
 	Since               string
+	Profile             string
 )
 
 func init() {
@@ -164,6 +165,7 @@ func init() {
 	pflag.BoolVar(&Explain, "explain", false, "Explains whether the given tasks and their dependencies would run, and why, without running them. Use with --json for machine-readable output.")
 	pflag.BoolVar(&Affected, "affected", false, "Runs only the given tasks that are affected by changed files (from git). With no task names, lists the affected tasks. Use with --json for machine-readable output.")
 	pflag.StringVar(&Since, "since", "", "With --affected, also count changes committed since this branch, tag or commit (its merge base with HEAD), e.g. origin/main. Uncommitted changes always count.")
+	pflag.StringVar(&Profile, "profile", "", "Writes a trace of the run to this file (Chrome trace format; open it in https://ui.perfetto.dev) and prints the critical path and slowest tasks.")
 	pflag.BoolVar(&MCP, "mcp", false, "Serves the Taskfile's tasks as tools over the Model Context Protocol (stdio), for coding agents. Task names given as arguments limit which tasks are exposed.")
 
 	// Gentle force experiment will override the force flag and add a new force-all flag
@@ -260,6 +262,10 @@ func Validate() error {
 
 	if MCP && (Watch || Graph || Explain || List || ListAll || Status || Summary || Init) {
 		return errors.New("task: --mcp cannot be combined with --watch, --graph, --explain, --list, --list-all, --status, --summary or --init")
+	}
+
+	if Profile != "" && (Watch || Graph || Explain || MCP || List || ListAll || Status || Summary || Dry) {
+		return errors.New("task: --profile cannot be combined with --watch, --graph, --explain, --mcp, --list, --list-all, --status, --summary or --dry")
 	}
 
 	if GraphFormat != "tree" && !Graph {

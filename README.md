@@ -18,6 +18,7 @@ safe, well-described tools, and monorepos where CI time matters.
 | [`--graph`](docs/graph-and-explain.md#--graph-see-what-runs-what) | Prints the task graph as a tree, Mermaid, Graphviz DOT or JSON, and flags missing tasks and cycles. |
 | [`--explain`](docs/graph-and-explain.md#--explain-why-will-this-run) | Says whether each task would run and why, down to which source files were added, modified or removed. Add `--json` for machine-readable output. |
 | [`--affected`](docs/affected.md) | Runs only the tasks affected by what changed in git (`--since origin/main` for pull requests), following sources, Taskfile edits and the dependency graph. With no task names, lists them, optionally as JSON for CI. |
+| [`--profile` and OpenTelemetry](docs/tracing.md) | `--profile trace.json` writes a Perfetto/Chrome timeline and prints the critical path and slowest tasks. Setting `OTEL_EXPORTER_OTLP_ENDPOINT` exports spans for every task and command to any OpenTelemetry backend, with `TRACEPARENT` passed through to commands. |
 | [Cycle detection](docs/graph-and-explain.md#cycle-detection) | Stops at the first cyclic call and names it (`a -> b -> a`), instead of failing after 1,000 calls or hanging. |
 
 ## Install

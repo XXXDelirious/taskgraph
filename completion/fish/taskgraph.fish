@@ -102,6 +102,7 @@ complete -c $GO_TASK_PROGNAME      -l explain                   -d 'explain whet
 complete -c $GO_TASK_PROGNAME      -l mcp                       -d 'serve tasks as tools over MCP (stdio)'
 complete -c $GO_TASK_PROGNAME      -l affected                  -d 'run or list only tasks affected by git changes'
 complete -c $GO_TASK_PROGNAME      -l since                     -d 'with --affected, compare with this git ref' -x
+complete -c $GO_TASK_PROGNAME      -l profile                   -d 'write a trace of the run to this file' -r
 complete -c $GO_TASK_PROGNAME -s t -l taskfile                  -d 'choose Taskfile to run'
 complete -c $GO_TASK_PROGNAME -s v -l verbose                   -d 'verbose output'
 complete -c $GO_TASK_PROGNAME      -l version                   -d 'show version'
