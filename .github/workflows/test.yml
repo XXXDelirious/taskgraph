@@ -44,7 +44,8 @@ jobs:
         with:
           go-version: 1.26.x
 
+      # -race needs cgo, which is on by default on this runner (gcc is
+      # installed). Don't set CGO_ENABLED here: TestEnv checks that the
+      # Taskfile's own CGO_ENABLED reaches commands when the OS doesn't set it.
       - name: Test with -race
-        env:
-          CGO_ENABLED: '1'
         run: go test -race ./...

@@ -9,7 +9,10 @@ tasks:
       - dep4
     failfast: true
 
-  dep1: sleep 0.1 && echo 'dep1'
-  dep2: sleep 0.2 && echo 'dep2'
-  dep3: sleep 0.3 && echo 'dep3'
+  # dep4 fails at once and failfast cancels the others. Their sleeps leave a
+  # wide margin, so a slow machine (e.g. under the race detector) never lets
+  # them finish first; cancelled sleeps end at once, so this costs no time.
+  dep1: sleep 1 && echo 'dep1'
+  dep2: sleep 2 && echo 'dep2'
+  dep3: sleep 3 && echo 'dep3'
   dep4: exit 1
