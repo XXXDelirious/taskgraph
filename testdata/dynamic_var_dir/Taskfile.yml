@@ -1,0 +1,22 @@
+version: '3'
+
+tasks:
+  default:
+    deps: [a, b]
+
+  # Same command, different directories: each must get its own result.
+  a:
+    dir: a
+    vars:
+      NAME:
+        sh: cat name.txt
+    cmds:
+      - echo "a sees {{.NAME}}"
+
+  b:
+    dir: b
+    vars:
+      NAME:
+        sh: cat name.txt
+    cmds:
+      - echo "b sees {{.NAME}}"

@@ -28,8 +28,25 @@ type Compiler struct {
 
 	Logger *logger.Logger
 
-	dynamicCache   map[string]string
+	dynamicCache   map[dynamicCacheKey]*dynamicResult
 	muDynamicCache sync.Mutex
+}
+
+// dynamicCacheKey identifies the result of a dynamic variable. The directory
+// is part of it: the same command can print different things in different
+// directories (e.g. `pwd` or `git rev-parse --show-prefix`).
+type dynamicCacheKey struct {
+	sh  string
+	dir string
+}
+
+// dynamicResult is the result of running a dynamic variable's command. done
+// is closed once value and err are set, so concurrent callers asking for the
+// same variable wait for one run instead of starting their own.
+type dynamicResult struct {
+	done  chan struct{}
+	value string
+	err   error
 }
 
 func (c *Compiler) GetTaskfileVariables() (*ast.Vars, error) {
@@ -91,17 +108,20 @@ func (c *Compiler) getVariables(t *ast.Task, call *Call, evaluateShVars bool) (*
 	}
 	rangeFunc := getRangeFunc(c.Dir)
 
+	// taskRangeFunc evaluates the task's own variables in the task's dir.
+	// The dir may be a template that uses variables, so it is worked out
+	// again once more variables are known (see setTaskDir below).
 	var taskRangeFunc func(k string, v ast.Var) error
-	if t != nil {
+	setTaskDir := func() error {
 		// NOTE(@andreynering): We're manually joining these paths here because
 		// this is the raw task, not the compiled one.
 		cache := &templater.Cache{Vars: result}
 		dir := templater.Replace(t.Dir, cache)
 		if err := cache.Err(); err != nil {
-			return nil, err
+			return err
 		}
-		dir = filepathext.SmartJoin(c.Dir, dir)
-		taskRangeFunc = getRangeFunc(dir)
+		taskRangeFunc = getRangeFunc(filepathext.SmartJoin(c.Dir, dir))
+		return nil
 	}
 
 	for k, v := range c.TaskfileEnv.All() {
@@ -120,6 +140,9 @@ func (c *Compiler) getVariables(t *ast.Task, call *Call, evaluateShVars bool) (*
 				return nil, err
 			}
 		}
+		if err := setTaskDir(); err != nil {
+			return nil, err
+		}
 		for k, v := range t.IncludedTaskfileVars.All() {
 			if err := taskRangeFunc(k, v); err != nil {
 				return nil, err
@@ -136,6 +159,9 @@ func (c *Compiler) getVariables(t *ast.Task, call *Call, evaluateShVars bool) (*
 			return nil, err
 		}
 	}
+	if err := setTaskDir(); err != nil {
+		return nil, err
+	}
 	for k, v := range t.Vars.All() {
 		if err := taskRangeFunc(k, v); err != nil {
 			return nil, err
@@ -146,29 +172,49 @@ func (c *Compiler) getVariables(t *ast.Task, call *Call, evaluateShVars bool) (*
 }
 
 func (c *Compiler) HandleDynamicVar(v ast.Var, dir string, e []string) (string, error) {
-	c.muDynamicCache.Lock()
-	defer c.muDynamicCache.Unlock()
-
 	// If the variable is not dynamic or it is empty, return an empty string
 	if v.Sh == nil || *v.Sh == "" {
 		return "", nil
-	}
-
-	if c.dynamicCache == nil {
-		c.dynamicCache = make(map[string]string, 30)
-	}
-	if result, ok := c.dynamicCache[*v.Sh]; ok {
-		return result, nil
 	}
 
 	// NOTE(@andreynering): If a var have a specific dir, use this instead
 	if v.Dir != "" {
 		dir = v.Dir
 	}
+	key := dynamicCacheKey{sh: *v.Sh, dir: dir}
 
+	// The lock only guards the map, so dynamic variables of tasks running in
+	// parallel are evaluated in parallel too.
+	c.muDynamicCache.Lock()
+	if c.dynamicCache == nil {
+		c.dynamicCache = make(map[dynamicCacheKey]*dynamicResult, 30)
+	}
+	if r, ok := c.dynamicCache[key]; ok {
+		c.muDynamicCache.Unlock()
+		<-r.done
+		return r.value, r.err
+	}
+	r := &dynamicResult{done: make(chan struct{})}
+	c.dynamicCache[key] = r
+	c.muDynamicCache.Unlock()
+
+	r.value, r.err = c.runDynamicVar(*v.Sh, dir, e)
+	close(r.done)
+	if r.err != nil {
+		// Failures are not cached, so a later call can try again.
+		c.muDynamicCache.Lock()
+		if c.dynamicCache[key] == r {
+			delete(c.dynamicCache, key)
+		}
+		c.muDynamicCache.Unlock()
+	}
+	return r.value, r.err
+}
+
+func (c *Compiler) runDynamicVar(sh, dir string, e []string) (string, error) {
 	var stdout bytes.Buffer
 	opts := &execext.RunCommandOptions{
-		Command: *v.Sh,
+		Command: sh,
 		Dir:     dir,
 		Stdout:  &stdout,
 		Stderr:  c.Logger.Stderr,
@@ -183,9 +229,7 @@ func (c *Compiler) HandleDynamicVar(v ast.Var, dir string, e []string) (string, 
 	result := strings.TrimSuffix(stdout.String(), "\r\n")
 	result = strings.TrimSuffix(result, "\n")
 
-	c.dynamicCache[*v.Sh] = result
-	c.Logger.VerboseErrf(logger.Magenta, "task: dynamic variable: %q result: %q\n", *v.Sh, result)
-
+	c.Logger.VerboseErrf(logger.Magenta, "task: dynamic variable: %q result: %q\n", sh, result)
 	return result, nil
 }
 

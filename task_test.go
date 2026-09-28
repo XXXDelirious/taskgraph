@@ -762,6 +762,57 @@ func TestCyclicDep(t *testing.T) {
 	assert.Equal(t, "task: Cycle detected in task calls: task-1 -> task-2 -> task-1", err.Error())
 }
 
+func TestDynamicVarsAreCachedPerDirectory(t *testing.T) {
+	t.Parallel()
+
+	var buff SyncBuffer
+	e := task.NewExecutor(
+		task.WithDir("testdata/dynamic_var_dir"),
+		task.WithStdout(&buff),
+		task.WithStderr(&buff),
+		task.WithSilent(true),
+	)
+	require.NoError(t, e.Setup())
+	require.NoError(t, e.Run(t.Context(), &task.Call{Task: "default"}))
+	assert.Contains(t, buff.String(), "a sees a\n")
+	assert.Contains(t, buff.String(), "b sees b\n")
+}
+
+func TestDynamicVarsRunOncePerCommand(t *testing.T) {
+	t.Parallel()
+
+	// Parallel deps that use the same dynamic variable share one run of its
+	// command.
+	dir := t.TempDir()
+	writeFile(t, dir, "Taskfile.yml", `version: '3'
+
+vars:
+  STAMP:
+    sh: echo run >> runs.txt; echo stamp
+
+tasks:
+  default:
+    deps: [a, b, c, d]
+  a: {cmds: ['echo {{.STAMP}}']}
+  b: {cmds: ['echo {{.STAMP}}']}
+  c: {cmds: ['echo {{.STAMP}}']}
+  d: {cmds: ['echo {{.STAMP}}']}
+`)
+	var buff SyncBuffer
+	e := task.NewExecutor(
+		task.WithDir(dir),
+		task.WithStdout(&buff),
+		task.WithStderr(&buff),
+		task.WithSilent(true),
+	)
+	require.NoError(t, e.Setup())
+	require.NoError(t, e.Run(t.Context(), &task.Call{Task: "default"}))
+	runs, err := os.ReadFile(filepath.Join(dir, "runs.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, "run\n", string(runs))
+	assert.Equal(t, 4, strings.Count(buff.String(), "stamp\n"))
+}
+
 func TestCyclicCmds(t *testing.T) {
 	t.Parallel()
 
