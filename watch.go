@@ -218,22 +218,34 @@ func (e *Executor) collectSources(calls []*Call) ([]string, error) {
 
 type traverseFunc func(*ast.Task) error
 
+// traverse calls yield for every task reachable from calls through deps and
+// task calls. Each task is visited once per set of call variables, so cyclic
+// Taskfiles do not recurse forever.
 func (e *Executor) traverse(calls []*Call, yield traverseFunc) error {
+	return e.traverseVisited(calls, yield, map[string]bool{})
+}
+
+func (e *Executor) traverseVisited(calls []*Call, yield traverseFunc, visited map[string]bool) error {
 	for _, c := range calls {
 		task, err := e.CompiledTask(c)
 		if err != nil {
 			return err
 		}
+		key := newCallFrame(task, c).key
+		if visited[key] {
+			continue
+		}
+		visited[key] = true
 		for _, dep := range task.Deps {
 			if dep.Task != "" {
-				if err := e.traverse([]*Call{{Task: dep.Task, Vars: dep.Vars}}, yield); err != nil {
+				if err := e.traverseVisited([]*Call{{Task: dep.Task, Vars: dep.Vars}}, yield, visited); err != nil {
 					return err
 				}
 			}
 		}
 		for _, cmd := range task.Cmds {
 			if cmd.Task != "" {
-				if err := e.traverse([]*Call{{Task: cmd.Task, Vars: cmd.Vars}}, yield); err != nil {
+				if err := e.traverseVisited([]*Call{{Task: cmd.Task, Vars: cmd.Vars}}, yield, visited); err != nil {
 					return err
 				}
 			}

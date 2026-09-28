@@ -10,6 +10,14 @@ safe, well-described tools, and monorepos where CI time matters.
 > All credit for the original task runner goes to Andrey Nering and the Task
 > contributors. See [Acknowledgements](#acknowledgements).
 
+## What taskgraph adds
+
+| Feature | What it does |
+| --- | --- |
+| [`--graph`](docs/graph-and-explain.md#--graph-see-what-runs-what) | Prints the task graph as a tree, Mermaid, Graphviz DOT or JSON, and flags missing tasks and cycles. |
+| [`--explain`](docs/graph-and-explain.md#--explain-why-will-this-run) | Says whether each task would run and why, down to which source files were added, modified or removed. Add `--json` for machine-readable output. |
+| [Cycle detection](docs/graph-and-explain.md#cycle-detection) | Stops at the first cyclic call and names it (`a -> b -> a`), instead of failing after 1,000 calls or hanging. |
+
 ## Install
 
 With Go 1.25 or newer:

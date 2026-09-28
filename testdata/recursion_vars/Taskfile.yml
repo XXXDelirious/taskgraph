@@ -1,0 +1,24 @@
+version: '3'
+
+# A task may call itself as long as the variables change on each call.
+tasks:
+  countdown:
+    vars:
+      N: '{{.N | default 3}}'
+    cmds:
+      - echo "n={{.N}}"
+      - task: countdown
+        vars:
+          N: '{{sub .N 1}}'
+        if: '[ {{.N}} -gt 1 ]'
+
+  # Calls itself with a dynamic variable whose command differs from the one it
+  # was called with, which must not be mistaken for a cycle.
+  dynamic:
+    cmds:
+      - echo "level={{.LEVEL}}"
+      - task: dynamic
+        vars:
+          LEVEL:
+            sh: echo inner
+        if: '[ "{{.LEVEL}}" = "outer" ]'

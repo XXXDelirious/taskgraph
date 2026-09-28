@@ -96,6 +96,9 @@ complete -c $GO_TASK_PROGNAME -s s -l silent                    -d 'disable echo
 complete -c $GO_TASK_PROGNAME      -l sort                      -d 'set task sorting order' -xa "default alphanumeric none"
 complete -c $GO_TASK_PROGNAME      -l status                    -d 'exit non-zero if tasks not up-to-date'
 complete -c $GO_TASK_PROGNAME      -l summary                   -d 'show task summary'
+complete -c $GO_TASK_PROGNAME      -l graph                     -d 'print the task graph instead of running'
+complete -c $GO_TASK_PROGNAME      -l graph-format              -d 'output format for --graph' -xa "tree dot mermaid json"
+complete -c $GO_TASK_PROGNAME      -l explain                   -d 'explain whether tasks would run, and why'
 complete -c $GO_TASK_PROGNAME -s t -l taskfile                  -d 'choose Taskfile to run'
 complete -c $GO_TASK_PROGNAME -s v -l verbose                   -d 'verbose output'
 complete -c $GO_TASK_PROGNAME      -l version                   -d 'show version'

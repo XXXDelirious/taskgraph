@@ -39,6 +39,10 @@ function _task()
       COMPREPLY=( $( compgen -W "interleaved group prefixed" -- $cur ) )
       return 0
     ;;
+    --graph-format)
+      COMPREPLY=( $( compgen -W "tree dot mermaid json" -- $cur ) )
+      return 0
+    ;;
   esac
 
   # Handle normal options.

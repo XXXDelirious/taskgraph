@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 
 	"github.com/spf13/pflag"
@@ -166,6 +167,7 @@ func run() error {
 		return err
 	}
 	calls, globals := args.Parse(cliArgsPreDash...)
+	requestedCalls := slices.Clone(calls)
 
 	// If there are no calls, run the default task instead
 	if len(calls) == 0 {
@@ -194,6 +196,19 @@ func run() error {
 	}
 
 	ctx := context.Background()
+
+	if flags.Graph {
+		// With no task names, graph the whole Taskfile.
+		g, err := e.TaskGraph(requestedCalls...)
+		if err != nil {
+			return err
+		}
+		return g.Write(os.Stdout, flags.GraphFormat)
+	}
+
+	if flags.Explain {
+		return e.Explain(ctx, os.Stdout, flags.ListJson, calls...)
+	}
 
 	if flags.Status {
 		return e.Status(ctx, calls...)

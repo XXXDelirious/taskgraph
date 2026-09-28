@@ -2,6 +2,7 @@ package task_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -755,8 +756,67 @@ func TestCyclicDep(t *testing.T) {
 	)
 	require.NoError(t, e.Setup())
 	err := e.Run(t.Context(), &task.Call{Task: "task-1"})
-	var taskCalledTooManyTimesError *errors.TaskCalledTooManyTimesError
-	assert.ErrorAs(t, err, &taskCalledTooManyTimesError)
+	var cycleErr *errors.TaskCycleError
+	require.ErrorAs(t, err, &cycleErr)
+	assert.Equal(t, []string{"task-1", "task-2", "task-1"}, cycleErr.Cycle)
+	assert.Equal(t, "task: Cycle detected in task calls: task-1 -> task-2 -> task-1", err.Error())
+}
+
+func TestCyclicCmds(t *testing.T) {
+	t.Parallel()
+
+	e := task.NewExecutor(
+		task.WithDir("testdata/cyclic_cmds"),
+		task.WithStdout(io.Discard),
+		task.WithStderr(io.Discard),
+	)
+	require.NoError(t, e.Setup())
+	err := e.Run(t.Context(), &task.Call{Task: "a"})
+	var cycleErr *errors.TaskCycleError
+	require.ErrorAs(t, err, &cycleErr)
+	assert.Equal(t, []string{"a", "b", "c", "a"}, cycleErr.Cycle)
+}
+
+func TestCyclicRunOnce(t *testing.T) {
+	t.Parallel()
+
+	// Tasks with `run: once` wait for an execution already in progress, so a
+	// cycle between them used to deadlock instead of failing.
+	e := task.NewExecutor(
+		task.WithDir("testdata/cyclic_run_once"),
+		task.WithStdout(io.Discard),
+		task.WithStderr(io.Discard),
+	)
+	require.NoError(t, e.Setup())
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	err := e.Run(ctx, &task.Call{Task: "a"})
+	var cycleErr *errors.TaskCycleError
+	require.ErrorAs(t, err, &cycleErr)
+	assert.Equal(t, []string{"a", "b", "a"}, cycleErr.Cycle)
+}
+
+func TestRecursionWithChangingVars(t *testing.T) {
+	t.Parallel()
+
+	var buff SyncBuffer
+	e := task.NewExecutor(
+		task.WithDir("testdata/recursion_vars"),
+		task.WithStdout(&buff),
+		task.WithStderr(&buff),
+		task.WithSilent(true),
+	)
+	require.NoError(t, e.Setup())
+	require.NoError(t, e.Run(t.Context(), &task.Call{Task: "countdown"}))
+	assert.Equal(t, "n=3\nn=2\nn=1\n", buff.String())
+
+	buff.Reset()
+	outerSh := "echo outer"
+	outer := ast.NewVars()
+	outer.Set("LEVEL", ast.Var{Sh: &outerSh})
+	require.NoError(t, e.Run(t.Context(), &task.Call{Task: "dynamic", Vars: outer}))
+	assert.Equal(t, "level=outer\nlevel=inner\n", buff.String())
 }
 
 func TestTaskVersion(t *testing.T) {

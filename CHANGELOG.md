@@ -7,6 +7,24 @@ Task before the fork is kept, unchanged, at the bottom of this file.
 
 ## Unreleased
 
+### Features
+
+- Added `--graph` to print the graph of tasks and the tasks they run, as a
+  tree, Mermaid, Graphviz DOT or JSON (`--graph-format`). Missing tasks,
+  internal tasks and cycles are marked.
+- Added `--explain` to show whether each task and its dependencies would run,
+  and why: which source files were added, modified or removed, which status
+  checks failed, which generated files are missing, and more. Works with
+  `--json`. The checksum method now keeps a per-file record in
+  `.task/manifest/` to support this.
+- Task call cycles are now detected at the first repeated call and reported as
+  `task: Cycle detected in task calls: a -> b -> a` (exit code 208).
+
+### Fixes
+
+- Cyclic dependencies no longer hang watch mode, and no longer deadlock when
+  the tasks use `run: once`.
+
 ### Project
 
 - Forked from Task v3.51.1 (upstream commit `24a3ccd`) and renamed to

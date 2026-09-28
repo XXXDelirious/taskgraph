@@ -87,6 +87,9 @@ var (
 	Cert                string
 	CertKey             string
 	Interactive         bool
+	Graph               bool
+	GraphFormat         string
+	Explain             bool
 )
 
 func init() {
@@ -119,8 +122,8 @@ func init() {
 		pflag.PrintDefaults()
 	}
 
-	pflag.BoolVar(&Version, "version", false, "Show Task version.")
-	pflag.BoolVarP(&Help, "help", "h", false, "Shows Task usage.")
+	pflag.BoolVar(&Version, "version", false, "Show taskgraph version.")
+	pflag.BoolVarP(&Help, "help", "h", false, "Shows taskgraph usage.")
 	pflag.BoolVarP(&Init, "init", "i", false, "Creates a new Taskfile.yml in the current folder.")
 	pflag.StringVar(&Completion, "completion", "", "Generates shell completion script.")
 	pflag.BoolVarP(&List, "list", "l", false, "Lists tasks with description of current Taskfile.")
@@ -153,6 +156,9 @@ func init() {
 	pflag.BoolVarP(&Failfast, "failfast", "F", getConfig(config, "FAILFAST", func() *bool { return &config.Failfast }, false), "When running tasks in parallel, stop all tasks if one fails.")
 	pflag.BoolVarP(&Global, "global", "g", false, "Runs global Taskfile, from $HOME/{T,t}askfile.{yml,yaml}.")
 	pflag.BoolVar(&Experiments, "experiments", false, "Lists all the available experiments and whether or not they are enabled.")
+	pflag.BoolVar(&Graph, "graph", false, "Prints the graph of the given tasks (or all tasks) and the tasks they run, instead of running them.")
+	pflag.StringVar(&GraphFormat, "graph-format", "tree", "Output format for --graph: [tree|dot|mermaid|json].")
+	pflag.BoolVar(&Explain, "explain", false, "Explains whether the given tasks and their dependencies would run, and why, without running them. Use with --json for machine-readable output.")
 
 	// Gentle force experiment will override the force flag and add a new force-all flag
 	if experiments.GentleForce.Enabled() {
@@ -230,8 +236,16 @@ func Validate() error {
 		return errors.New("task: cannot use --list and --list-all at the same time")
 	}
 
-	if ListJson && !List && !ListAll {
-		return errors.New("task: --json only applies to --list or --list-all")
+	if ListJson && !List && !ListAll && !Explain {
+		return errors.New("task: --json only applies to --list, --list-all or --explain")
+	}
+
+	if Graph && Explain {
+		return errors.New("task: cannot use --graph and --explain at the same time")
+	}
+
+	if GraphFormat != "tree" && !Graph {
+		return errors.New("task: --graph-format only applies to --graph")
 	}
 
 	if NoStatus && !ListJson {

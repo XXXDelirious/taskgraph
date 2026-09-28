@@ -143,6 +143,15 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 	if err != nil {
 		return err
 	}
+
+	// Calling a task with the same variables from inside itself can never
+	// finish, so report the cycle instead of recursing until the call limit.
+	self := newCallFrame(t, call)
+	if cycle := findCycle(call.parents, self); cycle != nil {
+		return &errors.TaskCycleError{Cycle: cycle}
+	}
+	parents := call.child(self)
+
 	if !shouldRunOnCurrentPlatform(t.Platforms) {
 		e.Logger.VerboseOutf(logger.Yellow, `task: %q not for current platform - ignored\n`, call.Task)
 		return nil
@@ -206,7 +215,7 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 
 	if err = e.startExecution(ctx, t, func(ctx context.Context) error {
 		e.Logger.VerboseErrf(logger.Magenta, "task: %q started\n", call.Task)
-		if err := e.runDeps(ctx, t); err != nil {
+		if err := e.runDeps(ctx, t, parents); err != nil {
 			return err
 		}
 
@@ -268,11 +277,11 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 
 		for i := range t.Cmds {
 			if t.Cmds[i].Defer {
-				defer e.runDeferred(t, call, i, t.Vars, &deferredExitCode)
+				defer e.runDeferred(t, call, parents, i, t.Vars, &deferredExitCode)
 				continue
 			}
 
-			if err := e.runCommand(ctx, t, call, i); err != nil {
+			if err := e.runCommand(ctx, t, call, parents, i); err != nil {
 				if err2 := e.statusOnError(t); err2 != nil {
 					e.Logger.VerboseErrf(logger.Yellow, "task: error cleaning status on error: %v\n", err2)
 				}
@@ -292,6 +301,11 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 		e.Logger.VerboseErrf(logger.Magenta, "task: %q finished\n", call.Task)
 		return nil
 	}); err != nil {
+		// A cycle is reported once, not wrapped again at every level of it.
+		var cycleErr *errors.TaskCycleError
+		if errors.As(err, &cycleErr) {
+			return cycleErr
+		}
 		return &errors.TaskRunError{TaskName: t.Name(), Err: err}
 	}
 
@@ -315,7 +329,7 @@ func (e *Executor) mkdir(t *ast.Task) error {
 	return nil
 }
 
-func (e *Executor) runDeps(ctx context.Context, t *ast.Task) error {
+func (e *Executor) runDeps(ctx context.Context, t *ast.Task, parents []callFrame) error {
 	g := &errgroup.Group{}
 	if e.Failfast || t.Failfast {
 		g, ctx = errgroup.WithContext(ctx)
@@ -326,7 +340,7 @@ func (e *Executor) runDeps(ctx context.Context, t *ast.Task) error {
 
 	for _, d := range t.Deps {
 		g.Go(func() error {
-			err := e.RunTask(ctx, &Call{Task: d.Task, Vars: d.Vars, Silent: d.Silent, Indirect: true})
+			err := e.RunTask(ctx, &Call{Task: d.Task, Vars: d.Vars, Silent: d.Silent, Indirect: true, parents: parents})
 			if err != nil {
 				return err
 			}
@@ -337,7 +351,7 @@ func (e *Executor) runDeps(ctx context.Context, t *ast.Task) error {
 	return g.Wait()
 }
 
-func (e *Executor) runDeferred(t *ast.Task, call *Call, i int, vars *ast.Vars, deferredExitCode *uint8) {
+func (e *Executor) runDeferred(t *ast.Task, call *Call, parents []callFrame, i int, vars *ast.Vars, deferredExitCode *uint8) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -354,12 +368,12 @@ func (e *Executor) runDeferred(t *ast.Task, call *Call, i int, vars *ast.Vars, d
 	cmd.If = templater.ReplaceWithExtra(cmd.If, cache, extra)
 	cmd.Vars = templater.ReplaceVarsWithExtra(cmd.Vars, cache, extra)
 
-	if err := e.runCommand(ctx, t, call, i); err != nil {
+	if err := e.runCommand(ctx, t, call, parents, i); err != nil {
 		e.Logger.VerboseErrf(logger.Yellow, "task: ignored error in deferred cmd: %s\n", err.Error())
 	}
 }
 
-func (e *Executor) runCommand(ctx context.Context, t *ast.Task, call *Call, i int) error {
+func (e *Executor) runCommand(ctx context.Context, t *ast.Task, call *Call, parents []callFrame, i int) error {
 	cmd := t.Cmds[i]
 
 	// Check if condition for any command type
@@ -379,7 +393,7 @@ func (e *Executor) runCommand(ctx context.Context, t *ast.Task, call *Call, i in
 		reacquire := e.releaseConcurrencyLimit()
 		defer reacquire()
 
-		err := e.RunTask(ctx, &Call{Task: cmd.Task, Vars: cmd.Vars, Silent: cmd.Silent, Indirect: true})
+		err := e.RunTask(ctx, &Call{Task: cmd.Task, Vars: cmd.Vars, Silent: cmd.Silent, Indirect: true, parents: parents})
 		var exitCode interp.ExitStatus
 		if errors.As(err, &exitCode) && cmd.IgnoreError {
 			e.Logger.VerboseErrf(logger.Yellow, "task: [%s] task error ignored: %v\n", t.Name(), err)

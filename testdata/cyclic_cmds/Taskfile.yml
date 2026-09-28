@@ -1,0 +1,13 @@
+version: '3'
+
+tasks:
+  a:
+    cmds:
+      - task: b
+
+  b:
+    cmds:
+      - task: c
+
+  c:
+    deps: [a]

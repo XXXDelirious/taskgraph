@@ -118,6 +118,22 @@ func (err *TaskCalledTooManyTimesError) Code() int {
 	return CodeTaskCalledTooManyTimes
 }
 
+// TaskCycleError is returned when a task ends up calling itself with the same
+// variables, through its deps or cmds. Such a call chain would never finish.
+type TaskCycleError struct {
+	// Cycle lists the task calls that form the cycle. The first and last
+	// entries are the same task.
+	Cycle []string
+}
+
+func (err *TaskCycleError) Error() string {
+	return fmt.Sprintf(`task: Cycle detected in task calls: %s`, strings.Join(err.Cycle, " -> "))
+}
+
+func (err *TaskCycleError) Code() int {
+	return CodeTaskCycle
+}
+
 // TaskCancelledByUserError is returned when the user does not accept an optional prompt to continue.
 type TaskCancelledByUserError struct {
 	TaskName string

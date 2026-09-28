@@ -1,0 +1,10 @@
+version: '3'
+
+tasks:
+  a:
+    run: once
+    deps: [b]
+
+  b:
+    run: once
+    deps: [a]
