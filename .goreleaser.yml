@@ -1,9 +1,11 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
+project_name: taskgraph
+
 builds:
-  - binary: task
-    main: ./cmd/task
+  - binary: taskgraph
+    main: ./cmd/taskgraph
     goos:
       - windows
       - darwin
@@ -33,7 +35,6 @@ builds:
       - -trimpath
     ldflags:
       - "-s -w"
-      - "{{if .IsNightly}}-X github.com/go-task/task/v3/internal/version.version={{.Version}}{{end}}"
 
 gomod:
   proxy: true
@@ -48,129 +49,33 @@ archives:
       - goos: windows
         formats: [zip]
 
-git:
-  ignore_tags:
-    - "{{if not .IsNightly}}nightly{{end}}"
-
 snapshot:
-  version_template: '{{.Version}}'
+  version_template: '{{.Version}}-snapshot'
 
 checksum:
-  name_template: 'task_checksums.txt'
+  name_template: 'taskgraph_checksums.txt'
+
+release:
+  github:
+    owner: XXXDelirious
+    name: taskgraph
 
 nfpms:
-  - vendor: Task
-    homepage: https://taskfile.dev
-    maintainer: The Task authors <task@taskfile.dev>
-    description: A fast, cross-platform build tool inspired by Make, designed for modern workflows.
+  - vendor: taskgraph
+    homepage: https://github.com/XXXDelirious/taskgraph
+    maintainer: XXXDelirious <XXXDelirious@users.noreply.github.com>
+    description: A Task-compatible task runner built for AI coding agents and monorepos.
     section: golang
     license: MIT
-    conflicts:
-      - taskwarrior
     formats:
       - deb
       - rpm
       - apk
     file_name_template: '{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}'
     contents:
-      - src: completion/bash/task.bash
-        dst: /etc/bash_completion.d/task
-      - src: completion/fish/task.fish
-        dst: /usr/share/fish/vendor_completions.d/task.fish
-      - src: completion/zsh/_task
-        dst: /usr/local/share/zsh/site-functions/_task
-
-brews:
-  - name: go-task
-    description: A fast, cross-platform build tool inspired by Make, designed for modern workflows.
-    license: MIT
-    homepage: https://taskfile.dev
-    directory: Formula
-    repository:
-      owner: go-task
-      name: homebrew-tap
-      token: "{{.Env.GH_GORELEASER_TOKEN}}" # So that it runs as the task-bot user
-    test: system "#{bin}/task", "--help"
-    install: |-
-      bin.install "task"
-      bash_completion.install "completion/bash/task.bash" => "task"
-      zsh_completion.install "completion/zsh/_task" => "_task"
-      fish_completion.install "completion/fish/task.fish"
-    commit_author:
-      name: task-bot
-      email: 106601941+task-bot@users.noreply.github.com
-
-winget:
-  - name: Task
-    publisher: Task
-    short_description: The modern task runner.
-    description: A fast, cross-platform build tool inspired by Make, designed for modern workflows.
-    license: MIT
-    homepage: https://taskfile.dev/
-    publisher_url: https://taskfile.dev/
-    publisher_support_url: https://github.com/go-task/task/issues
-    package_identifier: Task.Task
-    commit_author:
-      name: task-bot
-      email: 106601941+task-bot@users.noreply.github.com
-    commit_msg_template: 'chore: release {{.PackageIdentifier}} {{.Tag}}'
-    release_notes_url: https://github.com/go-task/task/releases/tag/{{.Tag}}
-    tags:
-      - build
-      - build-tool
-      - devops
-      - go
-      - make
-      - makefile
-      - runner
-      - task
-      - task-runner
-      - taskfile
-      - tool
-    repository:
-      owner: go-task
-      name: winget-pkgs
-      branch: 'task-{{.Version}}'
-      token: "{{.Env.GH_GORELEASER_TOKEN}}" # So that it runs as the task-bot user
-      pull_request:
-        enabled: true
-        draft: false
-        check_boxes: true
-        base:
-          owner: microsoft
-          name: winget-pkgs
-          branch: master
-        body: |
-          /cc @andreynering @pd93 @vmaerten
-
-npms:
-  - name: "@go-task/cli"
-    repository: "git+https://github.com/go-task/task.git"
-    bugs: https://github.com/go-task/task/issues
-    description: A fast, cross-platform build tool inspired by Make, designed for modern workflows.
-    homepage: https://taskfile.dev
-    license: MIT
-    author: "The Task authors"
-    access: public
-    keywords:
-      - "task"
-      - "taskfile"
-      - "build-tool"
-      - "task-runner"
-
-cloudsmiths:
-  - organization: "task"
-    repository: "{{if not .IsNightly}}task{{end}}"
-    formats:
-      - deb
-      - rpm
-      - apk
-    distributions:
-      deb:
-        - "any-distro/any-version"
-      rpm:
-        - "any-distro/any-version"
-      alpine:
-        - "alpine/any-version"
-    component: main
-    republish: true
+      - src: completion/bash/taskgraph.bash
+        dst: /etc/bash_completion.d/taskgraph
+      - src: completion/fish/taskgraph.fish
+        dst: /usr/share/fish/vendor_completions.d/taskgraph.fish
+      - src: completion/zsh/_taskgraph
+        dst: /usr/local/share/zsh/site-functions/_taskgraph

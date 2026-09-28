@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/internal/output"
-	"github.com/go-task/task/v3/internal/templater"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/output"
+	"github.com/XXXDelirious/taskgraph/internal/templater"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 func TestInterleaved(t *testing.T) {
@@ -53,13 +53,17 @@ func TestGroup(t *testing.T) {
 func TestGroupWithBeginEnd(t *testing.T) {
 	t.Parallel()
 
-	tmpl := templater.Cache{
-		Vars: ast.NewVars(
-			&ast.VarElement{
-				Key:   "VAR1",
-				Value: ast.Var{Value: "example-value"},
-			},
-		),
+	// templater.Cache is not safe for concurrent use, so each parallel
+	// subtest gets its own.
+	newTmpl := func() *templater.Cache {
+		return &templater.Cache{
+			Vars: ast.NewVars(
+				&ast.VarElement{
+					Key:   "VAR1",
+					Value: ast.Var{Value: "example-value"},
+				},
+			),
+		}
 	}
 
 	var o output.Output = output.Group{
@@ -70,7 +74,7 @@ func TestGroupWithBeginEnd(t *testing.T) {
 		t.Parallel()
 
 		var b bytes.Buffer
-		w, _, cleanup := o.WrapWriter(&b, io.Discard, "", &tmpl)
+		w, _, cleanup := o.WrapWriter(&b, io.Discard, "", newTmpl())
 
 		fmt.Fprintln(w, "foo\nbar")
 		assert.Equal(t, "", b.String())
@@ -83,7 +87,7 @@ func TestGroupWithBeginEnd(t *testing.T) {
 		t.Parallel()
 
 		var b bytes.Buffer
-		_, _, cleanup := o.WrapWriter(&b, io.Discard, "", &tmpl)
+		_, _, cleanup := o.WrapWriter(&b, io.Discard, "", newTmpl())
 		require.NoError(t, cleanup(nil))
 		assert.Equal(t, "", b.String())
 	})

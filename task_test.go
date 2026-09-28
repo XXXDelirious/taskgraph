@@ -26,11 +26,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-task/task/v3"
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/experiments"
-	"github.com/go-task/task/v3/internal/filepathext"
-	"github.com/go-task/task/v3/taskfile/ast"
+	task "github.com/XXXDelirious/taskgraph"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/experiments"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 func init() {
@@ -391,6 +391,24 @@ func (sb *SyncBuffer) Write(p []byte) (n int, err error) {
 	return sb.buf.Write(p)
 }
 
+func (sb *SyncBuffer) String() string {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	return sb.buf.String()
+}
+
+func (sb *SyncBuffer) Bytes() []byte {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	return bytes.Clone(sb.buf.Bytes())
+}
+
+func (sb *SyncBuffer) Reset() {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	sb.buf.Reset()
+}
+
 // fileContentTest provides a basic reusable test-case for running a Taskfile
 // and inspect generated files.
 type fileContentTest struct {
@@ -519,7 +537,7 @@ func TestStatusChecksum(t *testing.T) { // nolint:paralleltest // cannot run in 
 				require.Error(t, err)
 			}
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			tempDir := task.TempDir{
 				Remote:      filepathext.SmartJoin(dir, ".task"),
 				Fingerprint: filepathext.SmartJoin(dir, ".task"),
@@ -571,7 +589,7 @@ func TestStatusTimestamp(t *testing.T) { // nolint:paralleltest // cannot run in
 	_ = os.Remove(generatedFile)
 	_ = os.RemoveAll(filepathext.SmartJoin(dir, ".task"))
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -620,7 +638,7 @@ func TestStatusChecksumMissingGenerated(t *testing.T) { // nolint:paralleltest /
 	_ = os.Remove(generatedFile)
 	_ = os.RemoveAll(filepathext.SmartJoin(dir, ".task"))
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -661,7 +679,7 @@ func TestStatusVariables(t *testing.T) {
 	_ = os.RemoveAll(filepathext.SmartJoin(dir, ".task"))
 	_ = os.Remove(filepathext.SmartJoin(dir, "generated.txt"))
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithTempDir(task.TempDir{
@@ -697,7 +715,7 @@ func TestCmdsVariables(t *testing.T) {
 
 	_ = os.RemoveAll(filepathext.SmartJoin(dir, ".task"))
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithTempDir(task.TempDir{
@@ -803,7 +821,7 @@ func TestExpand(t *testing.T) {
 	if err != nil {
 		t.Errorf("Couldn't get $HOME: %v", err)
 	}
-	var buff bytes.Buffer
+	var buff SyncBuffer
 
 	e := task.NewExecutor(
 		task.WithDir(dir),
@@ -823,7 +841,7 @@ func TestDry(t *testing.T) {
 	file := filepathext.SmartJoin(dir, "file.txt")
 	_ = os.Remove(file)
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 
 	e := task.NewExecutor(
 		task.WithDir(dir),
@@ -1051,7 +1069,7 @@ func TestIncludeCycle(t *testing.T) {
 
 	const dir = "testdata/includes_cycle"
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -1069,7 +1087,7 @@ func TestIncludesIncorrect(t *testing.T) {
 
 	const dir = "testdata/includes_incorrect"
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -1302,7 +1320,7 @@ func TestIncludesRelativePath(t *testing.T) {
 
 	const dir = "testdata/includes_rel_path"
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -1338,7 +1356,7 @@ func TestIncludesInternal(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir(dir),
 				task.WithStdout(&buff),
@@ -1381,7 +1399,7 @@ func TestIncludesFlatten(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir(dir),
 				task.WithEntrypoint(dir+"/"+test.taskfile),
@@ -1417,7 +1435,7 @@ func TestIncludesInterpolation(t *testing.T) { // nolint:paralleltest // cannot 
 
 	for _, test := range tests { // nolint:paralleltest // cannot run in parallel
 		t.Run(test.name, func(t *testing.T) {
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir(filepath.Join(dir, test.name)),
 				task.WithStdout(&buff),
@@ -1440,7 +1458,7 @@ func TestIncludesInterpolation(t *testing.T) { // nolint:paralleltest // cannot 
 func TestIncludesWithExclude(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/includes_with_excludes"),
 		task.WithSilent(true),
@@ -1483,7 +1501,7 @@ func TestIncludedTaskfileVarMerging(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir(dir),
 				task.WithStdout(&buff),
@@ -1518,7 +1536,7 @@ func TestInternalTask(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir(dir),
 				task.WithStdout(&buff),
@@ -1603,7 +1621,7 @@ func TestSummary(t *testing.T) {
 
 	const dir = "testdata/summary"
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -1630,7 +1648,7 @@ func TestWhenNoDirAttributeItRunsInSameDirAsTaskfile(t *testing.T) {
 
 	const expected = "dir"
 	const dir = "testdata/" + expected
-	var out bytes.Buffer
+	var out SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&out),
@@ -1652,7 +1670,7 @@ func TestWhenDirAttributeAndDirExistsItRunsInThatDir(t *testing.T) {
 
 	const expected = "exists"
 	const dir = "testdata/dir/explicit_exists"
-	var out bytes.Buffer
+	var out SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&out),
@@ -1675,7 +1693,7 @@ func TestWhenDirAttributeItCreatesMissingAndRunsInThatDir(t *testing.T) {
 	const dir = "testdata/dir/explicit_doesnt_exist/"
 	const toBeCreated = dir + expected
 	const target = "whereami"
-	var out bytes.Buffer
+	var out SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&out),
@@ -1706,7 +1724,7 @@ func TestDynamicVariablesRunOnTheNewCreatedDir(t *testing.T) {
 	const dir = "testdata/dir/dynamic_var_on_created_dir/"
 	const toBeCreated = dir + expected
 	const target = "default"
-	var out bytes.Buffer
+	var out SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&out),
@@ -1769,7 +1787,7 @@ func TestDisplaysErrorOnVersion1Schema(t *testing.T) {
 func TestDisplaysErrorOnVersion2Schema(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/version/v2"),
 		task.WithStdout(io.Discard),
@@ -1786,7 +1804,7 @@ func TestShortTaskNotation(t *testing.T) {
 
 	const dir = "testdata/short_task_notation"
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -1818,7 +1836,7 @@ func TestDotenvShouldIncludeAllEnvFiles(t *testing.T) {
 func TestDotenvShouldErrorWhenIncludingDependantDotenvs(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/dotenv/error_included_envs"),
 		task.WithSummary(true),
@@ -1983,7 +2001,7 @@ func TestExitImmediately(t *testing.T) {
 
 	const dir = "testdata/exit_immediately"
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2033,7 +2051,7 @@ func TestRunOnceSharedDeps(t *testing.T) {
 
 	const dir = "testdata/run_once_shared_deps"
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2055,7 +2073,7 @@ func TestRunWhenChanged(t *testing.T) {
 
 	const dir = "testdata/run_when_changed"
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2077,7 +2095,7 @@ func TestDeferredCmds(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/deferred"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2107,7 +2125,7 @@ func TestExitCodeZero(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/exit_code"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2123,7 +2141,7 @@ func TestExitCodeOne(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/exit_code"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2152,7 +2170,7 @@ func TestIgnoreNilElements(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir(test.dir),
 				task.WithStdout(&buff),
@@ -2170,7 +2188,7 @@ func TestOutputGroup(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/output_group"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2197,7 +2215,7 @@ func TestOutputGroupErrorOnlySwallowsOutputOnSuccess(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/output_group_error_only"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2214,7 +2232,7 @@ func TestOutputGroupErrorOnlyShowsOutputOnFailure(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/output_group_error_only"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2232,7 +2250,7 @@ func TestIncludedVars(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/include_with_vars"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2263,7 +2281,7 @@ func TestIncludeWithVarsInInclude(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/include_with_vars_inside_include"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.Executor{
 		Dir:    dir,
 		Stdout: &buff,
@@ -2276,7 +2294,7 @@ func TestIncludedVarsMultiLevel(t *testing.T) {
 	t.Parallel()
 
 	const dir = "testdata/include_with_vars_multi_level"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2321,7 +2339,7 @@ func TestErrorCode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir(dir),
 				task.WithStdout(&buff),
@@ -2341,7 +2359,7 @@ func TestErrorCode(t *testing.T) {
 
 func TestEvaluateSymlinksInPaths(t *testing.T) { // nolint:paralleltest // cannot run in parallel
 	const dir = "testdata/evaluate_symlinks_in_paths"
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -2418,7 +2436,7 @@ func TestTaskfileWalk(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir(test.dir),
 				task.WithStdout(&buff),
@@ -2434,7 +2452,7 @@ func TestTaskfileWalk(t *testing.T) {
 func TestUserWorkingDirectory(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/user_working_dir"),
 		task.WithStdout(&buff),
@@ -2456,7 +2474,7 @@ func TestUserWorkingDirectoryWithIncluded(t *testing.T) {
 
 	wd = filepath.ToSlash(filepathext.SmartJoin(wd, "testdata/user_working_dir_with_includes/somedir"))
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/user_working_dir_with_includes"),
 		task.WithStdout(&buff),
@@ -2474,7 +2492,7 @@ func TestUserWorkingDirectoryWithIncluded(t *testing.T) {
 func TestPlatforms(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/platforms"),
 		task.WithStdout(&buff),
@@ -2488,7 +2506,7 @@ func TestPlatforms(t *testing.T) {
 func TestPOSIXShellOptsGlobalLevel(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/shopts/global_level"),
 		task.WithStdout(&buff),
@@ -2504,7 +2522,7 @@ func TestPOSIXShellOptsGlobalLevel(t *testing.T) {
 func TestPOSIXShellOptsTaskLevel(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/shopts/task_level"),
 		task.WithStdout(&buff),
@@ -2520,7 +2538,7 @@ func TestPOSIXShellOptsTaskLevel(t *testing.T) {
 func TestPOSIXShellOptsCommandLevel(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/shopts/command_level"),
 		task.WithStdout(&buff),
@@ -2536,7 +2554,7 @@ func TestPOSIXShellOptsCommandLevel(t *testing.T) {
 func TestBashShellOptsGlobalLevel(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/shopts/global_level"),
 		task.WithStdout(&buff),
@@ -2552,7 +2570,7 @@ func TestBashShellOptsGlobalLevel(t *testing.T) {
 func TestBashShellOptsTaskLevel(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/shopts/task_level"),
 		task.WithStdout(&buff),
@@ -2568,7 +2586,7 @@ func TestBashShellOptsTaskLevel(t *testing.T) {
 func TestBashShellOptsCommandLevel(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/shopts/command_level"),
 		task.WithStdout(&buff),
@@ -2584,7 +2602,7 @@ func TestBashShellOptsCommandLevel(t *testing.T) {
 func TestSplitArgs(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/split_args"),
 		task.WithStdout(&buff),
@@ -2604,7 +2622,7 @@ func TestSplitArgs(t *testing.T) {
 func TestAbsPath(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/abs_path"),
 		task.WithStdout(&buff),
@@ -2642,7 +2660,7 @@ func TestSingleCmdDep(t *testing.T) {
 func TestSilence(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir("testdata/silent"),
 		task.WithStdout(&buff),
@@ -2773,7 +2791,7 @@ func TestForce(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir("testdata/force"),
 				task.WithStdout(&buff),
@@ -2837,7 +2855,7 @@ func TestWildcard(t *testing.T) {
 		t.Run(test.call, func(t *testing.T) {
 			t.Parallel()
 
-			var buff bytes.Buffer
+			var buff SyncBuffer
 			e := task.NewExecutor(
 				task.WithDir("testdata/wildcards"),
 				task.WithStdout(&buff),

@@ -1,11 +1,11 @@
 <!--
 
-Thanks for your pull request, we really appreciate contributions!
+Thanks for your pull request!
 
-Please understand that it may take some time to be reviewed.
-
-Also, make sure to follow the [Contribution Guide](https://taskfile.dev/contributing/).
+Please describe what the change does and how it was tested.
 
 -->
 
-- [ ] I have read and followed the [Contribution Guide](https://taskfile.dev/contributing/)
+- [ ] I have read [CONTRIBUTING.md](../CONTRIBUTING.md)
+- [ ] I added or updated tests for this change
+- [ ] I added an entry to the `Unreleased` section of `CHANGELOG.md`

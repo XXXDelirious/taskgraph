@@ -1,11 +1,5 @@
 version: '3'
 
-includes:
-  website:
-    aliases: [w, docs, d]
-    taskfile: ./website
-    dir: ./website
-
 vars:
   BIN: "{{.ROOT_DIR}}/bin"
   GOTESTSUM_FORMAT: '{{if .CI}}github-actions{{else}}pkgname{{end}}'
@@ -20,18 +14,18 @@ tasks:
       - task: test
 
   run:
-    desc: Runs Task
+    desc: Runs taskgraph
     cmds:
-      - go run ./cmd/task {{.CLI_ARGS}}
+      - go run ./cmd/taskgraph {{.CLI_ARGS}}
 
   install:
-    desc: Installs Task
+    desc: Installs taskgraph
     aliases: [i]
     sources:
       - './**/*.go'
       - go.mod
     cmds:
-      - go install -v ./cmd/task
+      - go install -v ./cmd/taskgraph
 
   generate:
     aliases: [gen, g]
@@ -191,14 +185,13 @@ tasks:
       This task will do the following:
 
       - Update the version and date in the CHANGELOG.md file
-      - Update the version in the package.json and package-lock.json files
-      - Copy the latest docs to the "current" version on the website
+      - Update the version in internal/version/version.txt
       - Commit the changes
       - Create a new tag
       - Push the commit/tag to the repository
       - Create a GitHub release
 
-      To use the task, run "task release:<version>" where "<version>" is is one of:
+      To use the task, run "taskgraph release:<version>" where "<version>" is is one of:
 
       - "major" - Bumps the major number
       - "minor" - Bumps the minor number
@@ -208,12 +201,10 @@ tasks:
       VERSION:
         sh: "go run ./cmd/release --version {{index .MATCH 0}}"
       COMPLETE_MESSAGE: |
-        Creating release with GoReleaser: https://github.com/go-task/task/actions/workflows/release.yml
+        Creating release with GoReleaser: https://github.com/XXXDelirious/taskgraph/actions/workflows/release.yml
 
-        Please wait for the CI to finish and then do the following:
-
-        - Copy the changelog for v{{.VERSION}} to the GitHub release
-        - Update and push the snapcraft manifest in https://github.com/go-task/snap/blob/main/snap/snapcraft.yaml
+        Please wait for the CI to finish and then copy the changelog for
+        v{{.VERSION}} to the GitHub release.
     preconditions:
       - sh: test $(git rev-parse --abbrev-ref HEAD) = "main"
         msg: "You must be on the main branch to release"

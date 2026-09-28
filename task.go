@@ -12,17 +12,17 @@ import (
 	"golang.org/x/sync/errgroup"
 	"mvdan.cc/sh/v3/interp"
 
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/internal/env"
-	"github.com/go-task/task/v3/internal/execext"
-	"github.com/go-task/task/v3/internal/fingerprint"
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/internal/output"
-	"github.com/go-task/task/v3/internal/slicesext"
-	"github.com/go-task/task/v3/internal/sort"
-	"github.com/go-task/task/v3/internal/summary"
-	"github.com/go-task/task/v3/internal/templater"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/internal/env"
+	"github.com/XXXDelirious/taskgraph/internal/execext"
+	"github.com/XXXDelirious/taskgraph/internal/fingerprint"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/output"
+	"github.com/XXXDelirious/taskgraph/internal/slicesext"
+	"github.com/XXXDelirious/taskgraph/internal/sort"
+	"github.com/XXXDelirious/taskgraph/internal/summary"
+	"github.com/XXXDelirious/taskgraph/internal/templater"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 const (

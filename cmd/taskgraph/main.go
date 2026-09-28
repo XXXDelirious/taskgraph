@@ -9,15 +9,15 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/go-task/task/v3"
-	"github.com/go-task/task/v3/args"
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/experiments"
-	"github.com/go-task/task/v3/internal/filepathext"
-	"github.com/go-task/task/v3/internal/flags"
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/internal/version"
-	"github.com/go-task/task/v3/taskfile/ast"
+	task "github.com/XXXDelirious/taskgraph"
+	"github.com/XXXDelirious/taskgraph/args"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/experiments"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
+	"github.com/XXXDelirious/taskgraph/internal/flags"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/version"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 func main() {
@@ -74,7 +74,7 @@ func run() error {
 	}
 
 	if flags.Version {
-		fmt.Println(version.GetVersionWithBuildInfo())
+		fmt.Printf("taskgraph %s (compatible with Task %s)\n", version.GetVersionWithBuildInfo(), version.GetTaskCompatVersion())
 		return nil
 	}
 

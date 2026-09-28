@@ -5,10 +5,10 @@ import (
 
 	"github.com/elliotchance/orderedmap/v3"
 
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/internal/input"
-	"github.com/go-task/task/v3/internal/term"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/internal/input"
+	"github.com/XXXDelirious/taskgraph/internal/term"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 func (e *Executor) canPrompt() bool {

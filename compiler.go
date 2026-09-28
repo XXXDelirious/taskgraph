@@ -9,13 +9,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-task/task/v3/internal/env"
-	"github.com/go-task/task/v3/internal/execext"
-	"github.com/go-task/task/v3/internal/filepathext"
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/internal/templater"
-	"github.com/go-task/task/v3/internal/version"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/internal/env"
+	"github.com/XXXDelirious/taskgraph/internal/execext"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/templater"
+	"github.com/XXXDelirious/taskgraph/internal/version"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 type Compiler struct {
@@ -206,7 +206,8 @@ func (c *Compiler) getSpecialVars(t *ast.Task, call *Call) (map[string]string, e
 		"ROOT_TASKFILE":       filepath.ToSlash(filepathext.SmartJoin(c.Dir, c.Entrypoint)),
 		"ROOT_DIR":            filepath.ToSlash(c.Dir),
 		"USER_WORKING_DIR":    filepath.ToSlash(c.UserWorkingDir),
-		"TASK_VERSION":        version.GetVersion(),
+		"TASK_VERSION":        version.GetTaskCompatVersion(),
+		"TASKGRAPH_VERSION":   version.GetVersion(),
 		"PATH_LIST_SEPARATOR": string(os.PathListSeparator),
 		"FILE_PATH_SEPARATOR": string(os.PathSeparator),
 	}

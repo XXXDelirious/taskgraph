@@ -8,8 +8,8 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/go-task/task/v3/taskrc"
-	"github.com/go-task/task/v3/taskrc/ast"
+	"github.com/XXXDelirious/taskgraph/taskrc"
+	"github.com/XXXDelirious/taskgraph/taskrc/ast"
 )
 
 const envPrefix = "TASK_X_"

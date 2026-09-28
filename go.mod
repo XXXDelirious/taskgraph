@@ -1,4 +1,4 @@
-module github.com/go-task/task/v3
+module github.com/XXXDelirious/taskgraph
 
 go 1.25.10
 

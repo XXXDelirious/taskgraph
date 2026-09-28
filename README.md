@@ -1,49 +1,125 @@
-<div align="center">
-  <a href="https://taskfile.dev">
-    <img src="website/src/public/img/logo.svg" width="200px" height="200px" />
-  </a>
+# taskgraph
 
-  <h1>Task: The Modern Task Runner</h1>
+**A Task-compatible task runner built for AI coding agents and large monorepos.**
 
-  <p>
-    A fast, cross-platform build tool inspired by Make, designed for modern workflows.
-  </p>
+taskgraph runs the same `Taskfile.yml` files as [Task](https://taskfile.dev),
+and adds features aimed at how software is built today: coding agents that need
+safe, well-described tools, and monorepos where CI time matters.
 
-  <p>
-    <a href="https://taskfile.dev/docs/installation">Installation</a> &bullet; <a href="https://taskfile.dev/docs/getting-started">Getting Started</a> &bullet; <a href="https://taskfile.dev/docs/guide">Docs</a> &bullet; <a href="https://twitter.com/taskfiledev">Twitter</a> &bullet; <a href="https://bsky.app/profile/taskfile.dev">Bluesky</a> &bullet; <a href="https://fosstodon.org/@task">Mastodon</a> &bullet; <a href="https://discord.gg/6TY36E39UK">Discord</a>
-  </p>
+> taskgraph is a fork of [go-task/task](https://github.com/go-task/task) v3.51.1.
+> All credit for the original task runner goes to Andrey Nering and the Task
+> contributors. See [Acknowledgements](#acknowledgements).
 
-  <h1>Gold Sponsors</h1>
+## Install
 
-  <table>
-    <tr>
-      <td align="center" valign="middle">
-        <a target="_blank" href="https://devowl.io">
-          <img src="website/src/public/img/devowl.io.svg" height="100px" width="200px" title="devowl.io" />
-        </a>
-      </td>
-      <td align="center" valign="middle">
-        <a target="_blank" href="https://goodx.international/">
-          <img src="website/src/public/img/goodx.svg" height="80px" width="200px" title="GoodX" />
-        </a>
-      </td>
-      <td align="center" valign="middle">
-        <a target="_blank" href="https://magic.dev/">
-          <img src="website/src/public/img/magic.png" height="100px" width="200px" title="Magic" />
-        </a>
-      </td>
-    </tr>
-  </table>
+With Go 1.25 or newer:
 
-  <h2>Community Sponsors</h2>
+```shell
+go install github.com/XXXDelirious/taskgraph/cmd/taskgraph@latest
+```
 
-  <table>
-    <tr>
-      <td align="center" valign="middle">
-        <a target="_blank" href="https://cloudsmith.com/">
-          <img src="website/src/public/img/cloudsmith.svg" height="100px" width="200px" title="Cloudsmith" />
-        </a>
-      </td>
-    </tr>
-  </table>
-</div>
+Or download a binary from the
+[releases page](https://github.com/XXXDelirious/taskgraph/releases), or use the
+install script:
+
+```shell
+sh -c "$(curl --location https://raw.githubusercontent.com/XXXDelirious/taskgraph/main/install.sh)" -- -d -b ~/.local/bin
+```
+
+Check the install:
+
+```shell
+taskgraph --version
+# taskgraph 0.1.0 (compatible with Task 3.51.1)
+```
+
+## Quick start
+
+```yaml
+# Taskfile.yml
+version: '3'
+
+tasks:
+  build:
+    desc: Build the app
+    sources: ['**/*.go']
+    generates: ['bin/app']
+    cmds:
+      - go build -o bin/app .
+
+  test:
+    desc: Run the tests
+    deps: [build]
+    cmds:
+      - go test ./...
+```
+
+```shell
+taskgraph test        # runs build (if anything changed), then test
+taskgraph --list      # lists tasks that have a description
+```
+
+Everything in the [Task documentation](https://taskfile.dev/docs/guide)
+applies: variables, includes, `sources`/`generates`, preconditions, watch mode,
+and so on.
+
+## Compatibility with Task
+
+- **Taskfiles:** the same file names (`Taskfile.yml`, `taskfile.yaml`, ...), the
+  same schema (`version: '3'`), and the same features.
+- **Configuration:** `.taskrc.yml`, the `TASK_*` environment variables and the
+  `.task/` state folder are unchanged, so both tools can be used in the same
+  project.
+- **Versions:** taskgraph has its own version number. Taskfile schema checks and
+  the `{{.TASK_VERSION}}` variable use the compatible Task version (3.51.1); the
+  taskgraph version is available as `{{.TASKGRAPH_VERSION}}`.
+- **Binary name:** the command is `taskgraph`. To keep typing `task`, add
+  `alias task=taskgraph` to your shell profile.
+
+## Shell completion
+
+```shell
+# bash
+eval "$(taskgraph --completion bash)"
+# zsh
+eval "$(taskgraph --completion zsh)"
+# fish
+taskgraph --completion fish | source
+# PowerShell
+Invoke-Expression (&taskgraph --completion powershell | Out-String)
+```
+
+## Using it as a Go library
+
+```go
+import (
+	task "github.com/XXXDelirious/taskgraph"
+)
+
+e := task.NewExecutor(task.WithDir("."))
+if err := e.Setup(); err != nil {
+	return err
+}
+return e.Run(ctx, &task.Call{Task: "build"})
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). In short:
+
+```shell
+go run ./cmd/taskgraph test   # run the test suite
+go test -race ./...           # run it with the race detector
+```
+
+## Acknowledgements
+
+taskgraph is built on [Task](https://github.com/go-task/task), created by
+[Andrey Nering](https://github.com/andreynering) and maintained by the Task
+team and community. The original copyright notice is kept in
+[LICENSE](LICENSE), and Task's full history is kept in
+[CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+[MIT](LICENSE)

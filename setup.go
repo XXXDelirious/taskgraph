@@ -12,15 +12,15 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/sajari/fuzzy"
 
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/internal/env"
-	"github.com/go-task/task/v3/internal/execext"
-	"github.com/go-task/task/v3/internal/filepathext"
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/internal/output"
-	"github.com/go-task/task/v3/internal/version"
-	"github.com/go-task/task/v3/taskfile"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/internal/env"
+	"github.com/XXXDelirious/taskgraph/internal/execext"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/output"
+	"github.com/XXXDelirious/taskgraph/internal/version"
+	"github.com/XXXDelirious/taskgraph/taskfile"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 func (e *Executor) Setup() error {
@@ -296,19 +296,19 @@ func (e *Executor) doVersionChecks() error {
 		}
 	}
 
-	// Get the current version of Task
+	// Get the version of Task that this build of taskgraph is compatible with.
 	// If we can't parse the version (e.g. when its "devel"), then ignore the current version checks
-	currentVersion, err := semver.NewVersion(version.GetVersion())
+	currentVersion, err := semver.NewVersion(version.GetTaskCompatVersion())
 	if err != nil {
 		return nil
 	}
 
-	// Error if the Taskfile uses a schema version above the current version of Task
+	// Error if the Taskfile uses a schema version above the supported version of Task
 	if schemaVersion.GreaterThan(currentVersion) {
 		return &errors.TaskfileVersionCheckError{
 			URI:           e.Taskfile.Location,
 			SchemaVersion: schemaVersion,
-			Message:       fmt.Sprintf(`is greater than the current version of Task (%s)`, currentVersion.String()),
+			Message:       fmt.Sprintf(`is greater than the Task version supported by this taskgraph build (%s)`, currentVersion.String()),
 		}
 	}
 

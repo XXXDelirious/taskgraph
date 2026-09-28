@@ -9,12 +9,15 @@ import (
 var (
 	//go:embed version.txt
 	version string
-	commit  string
-	dirty   bool
+	//go:embed task_compat.txt
+	taskCompatVersion string
+	commit            string
+	dirty             bool
 )
 
 func init() {
 	version = strings.TrimSpace(version)
+	taskCompatVersion = strings.TrimSpace(taskCompatVersion)
 	// Attempt to get build info from the Go runtime. We only use this if not
 	// built from a tagged version.
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version == "(devel)" {
@@ -41,12 +44,21 @@ func getCommit(info *debug.BuildInfo) string {
 	return ""
 }
 
-// GetVersion returns the version of Task. By default, this is retrieved from
+// GetVersion returns the version of taskgraph. By default, this is retrieved from
 // the embedded version.txt file which is kept up-to-date by our release script.
 // However, it can also be overridden at build time using:
-// -ldflags="-X 'github.com/go-task/task/v3/internal/version.version=vX.X.X'".
+// -ldflags="-X 'github.com/XXXDelirious/taskgraph/internal/version.version=vX.X.X'".
 func GetVersion() string {
 	return version
+}
+
+// GetTaskCompatVersion returns the version of upstream Task
+// (https://github.com/go-task/task) that taskgraph is compatible with. Taskfile
+// schema checks and the TASK_VERSION special variable use this version, so
+// existing Taskfiles keep working even though taskgraph has its own version
+// numbering.
+func GetTaskCompatVersion() string {
+	return taskCompatVersion
 }
 
 // GetVersionWithBuildInfo is the same as [GetVersion], but it also includes

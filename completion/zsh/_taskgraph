@@ -1,6 +1,6 @@
-#compdef task
+#compdef taskgraph
 typeset -A opt_args
-TASK_CMD="${TASK_EXE:-task}"
+TASK_CMD="${TASK_EXE:-taskgraph}"
 compdef _task "$TASK_CMD"
 
 _GO_TASK_COMPLETION_LIST_OPTION="${GO_TASK_COMPLETION_LIST_OPTION:---list-all}"
@@ -8,7 +8,7 @@ _GO_TASK_COMPLETION_LIST_OPTION="${GO_TASK_COMPLETION_LIST_OPTION:---list-all}"
 # Check if an experiment is enabled
 function __task_is_experiment_enabled() {
     local experiment=$1
-    task --experiments 2>/dev/null | grep -q "^\* ${experiment}:.*on"
+    $TASK_CMD --experiments 2>/dev/null | grep -q "^\* ${experiment}:.*on"
 }
 
 # Listing commands from Taskfile.yml
@@ -149,6 +149,6 @@ _task() {
 }
 
 # don't run the completion function when being source-ed or eval-ed
-if [ "$funcstack[1]" = "_task" ]; then
+if [ "$funcstack[1]" = "_taskgraph" ]; then
     _task "$@"
 fi

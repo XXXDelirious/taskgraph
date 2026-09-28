@@ -1,7 +1,7 @@
 # vim: set tabstop=2 shiftwidth=2 expandtab:
 
 _GO_TASK_COMPLETION_LIST_OPTION='--list-all'
-TASK_CMD="${TASK_EXE:-task}"
+TASK_CMD="${TASK_EXE:-taskgraph}"
 
 function _task()
 {

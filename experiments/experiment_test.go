@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/go-task/task/v3/experiments"
-	"github.com/go-task/task/v3/taskrc/ast"
+	"github.com/XXXDelirious/taskgraph/experiments"
+	"github.com/XXXDelirious/taskgraph/taskrc/ast"
 )
 
 func TestNew(t *testing.T) {

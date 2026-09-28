@@ -11,22 +11,22 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/pflag"
 
-	"github.com/go-task/task/v3"
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/experiments"
-	"github.com/go-task/task/v3/internal/env"
-	"github.com/go-task/task/v3/internal/sort"
-	"github.com/go-task/task/v3/taskfile/ast"
-	"github.com/go-task/task/v3/taskrc"
-	taskrcast "github.com/go-task/task/v3/taskrc/ast"
+	task "github.com/XXXDelirious/taskgraph"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/experiments"
+	"github.com/XXXDelirious/taskgraph/internal/env"
+	"github.com/XXXDelirious/taskgraph/internal/sort"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/taskrc"
+	taskrcast "github.com/XXXDelirious/taskgraph/taskrc/ast"
 )
 
-const usage = `Usage: task [flags...] [task...]
+const usage = `Usage: taskgraph [flags...] [task...]
 
 Runs the specified task(s). Falls back to the "default" task if no task name
 was specified, or lists all tasks if an unknown task name was specified.
 
-Example: 'task hello' with the following 'Taskfile.yml' file will generate an
+Example: 'taskgraph hello' with the following 'Taskfile.yml' file will generate an
 'output.txt' file with the content "hello".
 
 '''

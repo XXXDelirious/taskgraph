@@ -11,11 +11,11 @@ import (
 	"github.com/Ladicle/tabwriter"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/go-task/task/v3/internal/editors"
-	"github.com/go-task/task/v3/internal/fingerprint"
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/internal/sort"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/internal/editors"
+	"github.com/XXXDelirious/taskgraph/internal/fingerprint"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/sort"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 // ListOptions collects list-related options

@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/go-task/task/v3/errors"
+	"github.com/XXXDelirious/taskgraph/errors"
 )
 
 var (

@@ -8,9 +8,9 @@ import (
 	"github.com/sebdah/goldie/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-task/task/v3"
-	"github.com/go-task/task/v3/experiments"
-	"github.com/go-task/task/v3/taskfile/ast"
+	task "github.com/XXXDelirious/taskgraph"
+	"github.com/XXXDelirious/taskgraph/experiments"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 type (

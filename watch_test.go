@@ -4,7 +4,6 @@
 package task_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -15,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-task/task/v3"
-	"github.com/go-task/task/v3/internal/filepathext"
+	task "github.com/XXXDelirious/taskgraph"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
 )
 
 func TestFileWatch(t *testing.T) {
@@ -36,7 +35,7 @@ Task running!
 task: task "default" finished running
 	`)
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),

@@ -1,6 +1,6 @@
 using namespace System.Management.Automation
 
-$cmdNames = @('task') + (Get-Alias -Definition task,task.exe,*\task,*\task.exe -ErrorAction SilentlyContinue).Name | Select-Object -Unique
+$cmdNames = @('taskgraph') + (Get-Alias -Definition taskgraph,taskgraph.exe,*\taskgraph,*\taskgraph.exe -ErrorAction SilentlyContinue).Name | Select-Object -Unique
 
 Register-ArgumentCompleter -CommandName $cmdNames -ScriptBlock {
 	param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
@@ -67,7 +67,7 @@ Register-ArgumentCompleter -CommandName $cmdNames -ScriptBlock {
 		)
 
 		# Experimental flags (dynamically added based on enabled experiments)
-		$experiments = & task --experiments 2>$null | Out-String
+		$experiments = & taskgraph --experiments 2>$null | Out-String
 
 		if ($experiments -match '\* GENTLE_FORCE:.*on') {
 			$completions += [CompletionResult]::new('--force-all', '--force-all', [CompletionResultType]::ParameterName, 'force all dependencies')
@@ -90,5 +90,5 @@ Register-ArgumentCompleter -CommandName $cmdNames -ScriptBlock {
 		return $completions.Where{ $_.CompletionText.StartsWith($commandName) }
 	}
 
-	return 	$(task --list-all --silent) | Where-Object { $_.StartsWith($commandName) } | ForEach-Object { return $_ + " " }
+	return 	$(taskgraph --list-all --silent) | Where-Object { $_.StartsWith($commandName) } | ForEach-Object { return $_ + " " }
 }

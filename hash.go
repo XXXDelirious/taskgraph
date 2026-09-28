@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"fmt"
 
-	"github.com/go-task/task/v3/internal/hash"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/internal/hash"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 func (e *Executor) GetHash(t *ast.Task) (string, error) {
