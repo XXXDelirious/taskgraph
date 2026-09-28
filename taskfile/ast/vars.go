@@ -71,37 +71,65 @@ func (vars *Vars) Set(key string, value Var) bool {
 	return vars.om.Set(key, value)
 }
 
+// snapshot returns the variables in order, read under the lock. Iterators
+// loop over a snapshot rather than the live map, so they are safe while other
+// goroutines call Set, and a loop body may itself change vars.
+func (vars *Vars) snapshot() []*VarElement {
+	if vars == nil || vars.om == nil {
+		return nil
+	}
+	vars.mutex.RLock()
+	defer vars.mutex.RUnlock()
+	els := make([]*VarElement, 0, vars.om.Len())
+	for pair := vars.om.Front(); pair != nil; pair = pair.Next() {
+		els = append(els, &VarElement{Key: pair.Key, Value: pair.Value})
+	}
+	return els
+}
+
 // All returns an iterator that loops over all task key-value pairs.
 func (vars *Vars) All() iter.Seq2[string, Var] {
-	if vars == nil || vars.om == nil {
-		return func(yield func(string, Var) bool) {}
+	els := vars.snapshot()
+	return func(yield func(string, Var) bool) {
+		for _, el := range els {
+			if !yield(el.Key, el.Value) {
+				return
+			}
+		}
 	}
-	return vars.om.AllFromFront()
 }
 
 // Keys returns an iterator that loops over all task keys.
 func (vars *Vars) Keys() iter.Seq[string] {
-	if vars == nil || vars.om == nil {
-		return func(yield func(string) bool) {}
+	els := vars.snapshot()
+	return func(yield func(string) bool) {
+		for _, el := range els {
+			if !yield(el.Key) {
+				return
+			}
+		}
 	}
-	return vars.om.Keys()
 }
 
 // Values returns an iterator that loops over all task values.
 func (vars *Vars) Values() iter.Seq[Var] {
-	if vars == nil || vars.om == nil {
-		return func(yield func(Var) bool) {}
+	els := vars.snapshot()
+	return func(yield func(Var) bool) {
+		for _, el := range els {
+			if !yield(el.Value) {
+				return
+			}
+		}
 	}
-	return vars.om.Values()
 }
 
 // ToCacheMap converts Vars to an unordered map containing only the static
 // variables
 func (vars *Vars) ToCacheMap() (m map[string]any) {
-	defer vars.mutex.RUnlock()
-	vars.mutex.RLock()
-	m = make(map[string]any, vars.Len())
-	for k, v := range vars.All() {
+	els := vars.snapshot()
+	m = make(map[string]any, len(els))
+	for _, el := range els {
+		k, v := el.Key, el.Value
 		if v.Sh != nil && *v.Sh != "" {
 			// Dynamic variable is not yet resolved; trigger
 			// <no value> to be used in templates.
@@ -123,13 +151,15 @@ func (vars *Vars) Merge(other *Vars, include *Include) {
 	if vars == nil || vars.om == nil || other == nil {
 		return
 	}
-	defer other.mutex.RUnlock()
-	other.mutex.RLock()
-	for pair := other.om.Front(); pair != nil; pair = pair.Next() {
+	els := other.snapshot()
+	vars.mutex.Lock()
+	defer vars.mutex.Unlock()
+	for _, el := range els {
+		value := el.Value
 		if include != nil && include.AdvancedImport {
-			pair.Value.Dir = include.Dir
+			value.Dir = include.Dir
 		}
-		vars.om.Set(pair.Key, pair.Value)
+		vars.om.Set(el.Key, value)
 	}
 }
 

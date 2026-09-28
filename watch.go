@@ -15,7 +15,6 @@ import (
 	"github.com/puzpuzpuz/xsync/v4"
 
 	"github.com/XXXDelirious/taskgraph/errors"
-	"github.com/XXXDelirious/taskgraph/internal/filepathext"
 	"github.com/XXXDelirious/taskgraph/internal/fingerprint"
 	"github.com/XXXDelirious/taskgraph/internal/fsnotifyext"
 	"github.com/XXXDelirious/taskgraph/internal/logger"
@@ -30,20 +29,32 @@ func (e *Executor) watchTasks(calls ...*Call) error {
 	tasks := make([]string, len(calls))
 	for i, c := range calls {
 		tasks[i] = c.Task
+		// Several goroutines use each call. GetTask creates call.Vars when
+		// it is nil, so create it now rather than racing on it later.
+		if c.Vars == nil {
+			c.Vars = ast.NewVars()
+		}
 	}
 
 	e.Logger.Errf(logger.Green, "task: Started watching for tasks: %s\n", strings.Join(tasks, ", "))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	for _, c := range calls {
-		go func() {
-			err := e.RunTask(ctx, c)
-			if err == nil {
-				e.Logger.Errf(logger.Green, "task: task \"%s\" finished running\n", c.Task)
-			} else if !isContextError(err) {
-				e.Logger.Errf(logger.Red, "%v\n", err)
-			}
-		}()
+	// Each watched call has its own context, so a file change only cancels
+	// and restarts the calls it affects. Contexts are passed to goroutines by
+	// value; cancels is only touched by this goroutine before the event loop
+	// starts, and by the event loop after that.
+	cancels := make([]context.CancelFunc, len(calls))
+	start := func(i int) {
+		ctx, cancel := context.WithCancel(context.Background()) //nolint:gosec // cancel is kept in cancels and called by the event loop
+		cancels[i] = cancel
+		go e.runWatchedTask(ctx, calls[i])
+	}
+	cancelAll := func() {
+		for _, cancel := range cancels {
+			cancel()
+		}
+	}
+	for i := range calls {
+		start(i)
 	}
 
 	var waitTime time.Duration
@@ -58,7 +69,7 @@ func (e *Executor) watchTasks(calls ...*Call) error {
 
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		cancel()
+		cancelAll()
 		return err
 	}
 	defer w.Close()
@@ -73,51 +84,29 @@ func (e *Executor) watchTasks(calls ...*Call) error {
 			select {
 			case event, ok := <-eventsChan:
 				if !ok {
-					cancel()
+					cancelAll()
 					return
 				}
 				e.Logger.VerboseErrf(logger.Magenta, "task: received watch event: %v\n", event)
 
-				cancel()
-				ctx, cancel = context.WithCancel(context.Background())
+				if ShouldIgnore(event.Name) {
+					e.Logger.VerboseErrf(logger.Magenta, "task: event skipped for being an ignored dir: %s\n", event.Name)
+					continue
+				}
 
 				e.Compiler.ResetCache()
 
-				for _, c := range calls {
-					go func() {
-						if ShouldIgnore(event.Name) {
-							e.Logger.VerboseErrf(logger.Magenta, "task: event skipped for being an ignored dir: %s\n", event.Name)
-							return
-						}
-						t, err := e.GetTask(c)
-						if err != nil {
-							e.Logger.Errf(logger.Red, "%v\n", err)
-							return
-						}
-						baseDir := filepathext.SmartJoin(e.Dir, t.Dir)
-						files, err := e.collectSources(calls)
-						if err != nil {
-							e.Logger.Errf(logger.Red, "%v\n", err)
-							return
-						}
-
-						if !event.Has(fsnotify.Remove) && !slices.Contains(files, event.Name) {
-							relPath, _ := filepath.Rel(baseDir, event.Name)
-							e.Logger.VerboseErrf(logger.Magenta, "task: skipped for file not in sources: %s\n", relPath)
-							return
-						}
-						err = e.RunTask(ctx, c)
-						if err == nil {
-							e.Logger.Errf(logger.Green, "task: task \"%s\" finished running\n", c.Task)
-						} else if !isContextError(err) {
-							e.Logger.Errf(logger.Red, "%v\n", err)
-						}
-					}()
+				for i, c := range calls {
+					if !e.watchAffects(c, event) {
+						continue
+					}
+					cancels[i]()
+					start(i)
 				}
 			case err, ok := <-w.Errors:
 				switch {
 				case !ok:
-					cancel()
+					cancelAll()
 					return
 				default:
 					e.Logger.Errf(logger.Red, "%v\n", err)
@@ -142,6 +131,37 @@ func (e *Executor) watchTasks(calls ...*Call) error {
 
 	<-make(chan struct{})
 	return nil
+}
+
+func (e *Executor) runWatchedTask(ctx context.Context, c *Call) {
+	err := e.RunTask(ctx, c)
+	if err == nil {
+		e.Logger.Errf(logger.Green, "task: task \"%s\" finished running\n", c.Task)
+	} else if !isContextError(err) {
+		e.Logger.Errf(logger.Red, "%v\n", err)
+	}
+}
+
+// watchAffects reports whether a file event should re-run the watched call:
+// the file is one of its sources (or those of the tasks it runs), or a file
+// was removed. Other watched calls keep running undisturbed.
+func (e *Executor) watchAffects(c *Call, event fsnotify.Event) bool {
+	if event.Has(fsnotify.Remove) {
+		return true
+	}
+	files, err := e.collectSources([]*Call{c})
+	if err != nil {
+		e.Logger.Errf(logger.Red, "%v\n", err)
+		return false
+	}
+	// Sources are listed with forward slashes, while fsnotify reports paths
+	// with the OS separator.
+	if !slices.Contains(files, filepath.ToSlash(event.Name)) {
+		relPath, _ := filepath.Rel(e.Dir, event.Name)
+		e.Logger.VerboseErrf(logger.Magenta, "task: %q skipped for file not in its sources: %s\n", c.Task, relPath)
+		return false
+	}
+	return true
 }
 
 func isContextError(err error) bool {
