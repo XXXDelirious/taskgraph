@@ -102,6 +102,7 @@ _task() {
         '(--graph)--graph[print the task graph instead of running tasks]'
         '(--graph-format)--graph-format[output format for --graph]:format:(tree dot mermaid json)'
         '(--explain)--explain[explain whether tasks would run, and why]'
+        '(--mcp)--mcp[serve tasks as tools over the Model Context Protocol]'
         '(-t --taskfile)'{-t,--taskfile}'[specify a different taskfile]:taskfile:_files'
         '(-v --verbose)'{-v,--verbose}'[verbose mode]'
         '(-w --watch)'{-w,--watch}'[watch-mode for given tasks, re-run when inputs change]'

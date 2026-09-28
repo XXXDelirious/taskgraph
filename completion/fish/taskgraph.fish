@@ -99,6 +99,7 @@ complete -c $GO_TASK_PROGNAME      -l summary                   -d 'show task su
 complete -c $GO_TASK_PROGNAME      -l graph                     -d 'print the task graph instead of running'
 complete -c $GO_TASK_PROGNAME      -l graph-format              -d 'output format for --graph' -xa "tree dot mermaid json"
 complete -c $GO_TASK_PROGNAME      -l explain                   -d 'explain whether tasks would run, and why'
+complete -c $GO_TASK_PROGNAME      -l mcp                       -d 'serve tasks as tools over MCP (stdio)'
 complete -c $GO_TASK_PROGNAME -s t -l taskfile                  -d 'choose Taskfile to run'
 complete -c $GO_TASK_PROGNAME -s v -l verbose                   -d 'verbose output'
 complete -c $GO_TASK_PROGNAME      -l version                   -d 'show version'

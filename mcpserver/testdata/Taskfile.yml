@@ -1,0 +1,70 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build the app
+    deps: [gen]
+    summary: Compiles everything under src/.
+    cmds:
+      - echo "built for {{.TARGET}} {{.EXTRA}}"
+    requires:
+      vars:
+        - name: TARGET
+          enum: [linux, darwin]
+
+  gen:
+    desc: Generate code
+    mcp:
+      read_only: false
+      idempotent: true
+      destructive: false
+    cmds:
+      - echo gen
+
+  test:
+    desc: Run the tests
+    cmds:
+      - echo "testing {{.CLI_ARGS}}"
+
+  fail:
+    desc: Always fails
+    cmds:
+      - echo "about to fail"
+      - exit 3
+
+  noisy:
+    desc: Prints a lot
+    cmds:
+      - i=1; while [ $i -le 2000 ]; do echo "line $i"; i=$((i+1)); done
+
+  docs:serve:
+    desc: Serve the docs
+    mcp: false
+    cmds:
+      - echo serving
+
+  docs:build:
+    desc: Build the docs
+    cmds:
+      - echo docs
+
+  deploy:
+    desc: Deploy
+    prompt: Deploy to production?
+    cmds:
+      - echo deploying
+
+  undocumented:
+    cmds:
+      - echo hi
+
+  exposed-anyway:
+    mcp: true
+    cmds:
+      - echo exposed
+
+  helper:
+    internal: true
+    desc: Internal helper
+    cmds:
+      - echo helper

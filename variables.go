@@ -73,6 +73,7 @@ func (e *Executor) CompiledTaskForTaskList(call *Call) (*ast.Task, error) {
 		Watch:                origTask.Watch,
 		Namespace:            origTask.Namespace,
 		Failfast:             origTask.Failfast,
+		MCP:                  origTask.MCP.DeepCopy(),
 	}, nil
 }
 
@@ -140,6 +141,7 @@ func (e *Executor) compiledTask(call *Call, evaluateShVars bool) (*ast.Task, err
 		Requires:             requires,
 		Watch:                origTask.Watch,
 		Failfast:             origTask.Failfast,
+		MCP:                  origTask.MCP.DeepCopy(),
 		Namespace:            origTask.Namespace,
 		FullName:             fullName,
 	}

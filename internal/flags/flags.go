@@ -90,6 +90,7 @@ var (
 	Graph               bool
 	GraphFormat         string
 	Explain             bool
+	MCP                 bool
 )
 
 func init() {
@@ -159,6 +160,7 @@ func init() {
 	pflag.BoolVar(&Graph, "graph", false, "Prints the graph of the given tasks (or all tasks) and the tasks they run, instead of running them.")
 	pflag.StringVar(&GraphFormat, "graph-format", "tree", "Output format for --graph: [tree|dot|mermaid|json].")
 	pflag.BoolVar(&Explain, "explain", false, "Explains whether the given tasks and their dependencies would run, and why, without running them. Use with --json for machine-readable output.")
+	pflag.BoolVar(&MCP, "mcp", false, "Serves the Taskfile's tasks as tools over the Model Context Protocol (stdio), for coding agents. Task names given as arguments limit which tasks are exposed.")
 
 	// Gentle force experiment will override the force flag and add a new force-all flag
 	if experiments.GentleForce.Enabled() {
@@ -242,6 +244,10 @@ func Validate() error {
 
 	if Graph && Explain {
 		return errors.New("task: cannot use --graph and --explain at the same time")
+	}
+
+	if MCP && (Watch || Graph || Explain || List || ListAll || Status || Summary || Init) {
+		return errors.New("task: --mcp cannot be combined with --watch, --graph, --explain, --list, --list-all, --status, --summary or --init")
 	}
 
 	if GraphFormat != "tree" && !Graph {

@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
+	"syscall"
 
 	"github.com/spf13/pflag"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/XXXDelirious/taskgraph/internal/flags"
 	"github.com/XXXDelirious/taskgraph/internal/logger"
 	"github.com/XXXDelirious/taskgraph/internal/version"
+	"github.com/XXXDelirious/taskgraph/mcpserver"
 	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
@@ -127,6 +131,10 @@ func run() error {
 		return nil
 	}
 
+	if flags.MCP {
+		return runMCPServer()
+	}
+
 	e := task.NewExecutor(
 		flags.WithFlags(),
 		task.WithVersionCheck(true),
@@ -215,4 +223,33 @@ func run() error {
 	}
 
 	return e.Run(ctx, calls...)
+}
+
+// runMCPServer serves the Taskfile over MCP on stdin/stdout. Nothing else may
+// be written to stdout while it runs, since stdout carries the protocol.
+func runMCPServer() error {
+	cliArgs, _, err := args.Get()
+	if err != nil {
+		return err
+	}
+	calls, _ := args.Parse(cliArgs...)
+	names := make([]string, 0, len(calls))
+	for _, c := range calls {
+		names = append(names, c.Task)
+	}
+
+	server, err := mcpserver.New(mcpserver.Options{
+		ExecutorOptions: []task.ExecutorOption{flags.WithFlags(), task.WithVersionCheck(true)},
+		Tasks:           names,
+	})
+	if err != nil {
+		return err
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if flags.Verbose {
+		fmt.Fprintf(os.Stderr, "task: serving %d tools over MCP: %s\n", len(server.Tools()), strings.Join(server.Tools(), ", "))
+	}
+	return server.Run(ctx)
 }

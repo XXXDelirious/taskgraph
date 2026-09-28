@@ -58,6 +58,7 @@ Register-ArgumentCompleter -CommandName $cmdNames -ScriptBlock {
 			[CompletionResult]::new('--graph', '--graph', [CompletionResultType]::ParameterName, 'print the task graph'),
 			[CompletionResult]::new('--graph-format', '--graph-format', [CompletionResultType]::ParameterName, 'output format for --graph'),
 			[CompletionResult]::new('--explain', '--explain', [CompletionResultType]::ParameterName, 'explain whether tasks would run'),
+			[CompletionResult]::new('--mcp', '--mcp', [CompletionResultType]::ParameterName, 'serve tasks as tools over MCP'),
 			[CompletionResult]::new('-t', '-t', [CompletionResultType]::ParameterName, 'choose Taskfile'),
 			[CompletionResult]::new('--taskfile', '--taskfile', [CompletionResultType]::ParameterName, 'choose Taskfile'),
 			[CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'verbose output'),

@@ -9,6 +9,15 @@ Task before the fork is kept, unchanged, at the bottom of this file.
 
 ### Features
 
+- Added `taskgraph --mcp`, which serves the Taskfile's tasks as tools over the
+  Model Context Protocol for coding agents. Each task with a description
+  becomes a tool; required variables become typed inputs (with `enum`
+  values), and results include the output and exit code. The read-only
+  `taskgraph_explain` and `taskgraph_graph` tools are always available. Task
+  names given after `--mcp` limit which tasks are exposed, and a new optional
+  `mcp:` task key hides tasks or sets tool hints (`read_only`, `destructive`,
+  `idempotent`). Implements the long-standing upstream request
+  go-task/task#2324.
 - Added `--graph` to print the graph of tasks and the tasks they run, as a
   tree, Mermaid, Graphviz DOT or JSON (`--graph-format`). Missing tasks,
   internal tasks and cycles are marked.

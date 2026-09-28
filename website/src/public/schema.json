@@ -210,6 +210,37 @@
           "description": "When running tasks in parallel, stop all tasks if one fails.",
           "type": "boolean",
           "default": false
+        },
+        "mcp": {
+          "description": "taskgraph extension: how this task is exposed as a tool by `taskgraph --mcp`. `false` hides it. Ignored by Task.",
+          "anyOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "properties": {
+                "expose": {
+                  "description": "Whether to expose the task. By default, tasks with a description that are not internal are exposed.",
+                  "type": "boolean"
+                },
+                "read_only": {
+                  "description": "Hint that the task does not change anything.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "destructive": {
+                  "description": "Hint that the task may delete or overwrite things.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "idempotent": {
+                  "description": "Hint that running the task twice has no extra effect.",
+                  "type": "boolean",
+                  "default": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
         }
       }
     },

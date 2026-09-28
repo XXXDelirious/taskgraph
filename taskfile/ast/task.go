@@ -44,6 +44,7 @@ type Task struct {
 	Watch         bool
 	Location      *Location
 	Failfast      bool
+	MCP           *MCP
 	// Populated during merging
 	Namespace            string `hash:"ignore"`
 	IncludeVars          *Vars
@@ -156,6 +157,7 @@ func (t *Task) UnmarshalYAML(node *yaml.Node) error {
 			Requires      *Requires
 			Watch         bool
 			Failfast      bool
+			MCP           *MCP `yaml:"mcp"`
 		}
 		if err := node.Decode(&task); err != nil {
 			return errors.NewTaskfileDecodeError(err, node)
@@ -196,6 +198,7 @@ func (t *Task) UnmarshalYAML(node *yaml.Node) error {
 		t.Requires = task.Requires
 		t.Watch = task.Watch
 		t.Failfast = task.Failfast
+		t.MCP = task.MCP
 		return nil
 	}
 
@@ -244,6 +247,7 @@ func (t *Task) DeepCopy() *Task {
 		FullName:             t.FullName,
 		Watch:                t.Watch,
 		Failfast:             t.Failfast,
+		MCP:                  t.MCP.DeepCopy(),
 	}
 	return c
 }
