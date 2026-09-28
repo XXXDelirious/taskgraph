@@ -1,0 +1,15 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build web
+    deps: [':shared:build']
+    sources: ['src/**/*.go']
+    cmds:
+      - echo build-web
+
+  test:
+    desc: Test web
+    deps: [build]
+    cmds:
+      - echo test-web

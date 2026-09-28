@@ -1,0 +1,28 @@
+version: '3'
+
+includes:
+  web:
+    taskfile: apps/web
+    dir: apps/web
+  api:
+    taskfile: apps/api
+    dir: apps/api
+  shared:
+    taskfile: libs/shared
+    dir: libs/shared
+
+tasks:
+  test:
+    desc: Test everything
+    deps: [web:test, api:test]
+
+  lint:
+    desc: Lint everything
+    cmds:
+      - echo lint
+
+  helper:
+    internal: true
+    sources: ['libs/**/*.go']
+    cmds:
+      - echo helper

@@ -18,6 +18,10 @@ Task before the fork is kept, unchanged, at the bottom of this file.
   `mcp:` task key hides tasks or sets tool hints (`read_only`, `destructive`,
   `idempotent`). Implements the long-standing upstream request
   go-task/task#2324.
+- Added `--affected` (with optional `--since <ref>`) to run only the given
+  tasks that are affected by changes in git, or, with no task names, to list
+  the affected tasks (`--json` for CI). A task is affected when a changed file
+  matches its sources, its Taskfile changed, or a task it runs is affected.
 - Added `--graph` to print the graph of tasks and the tasks they run, as a
   tree, Mermaid, Graphviz DOT or JSON (`--graph-format`). Missing tasks,
   internal tasks and cycles are marked.

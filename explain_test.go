@@ -31,7 +31,9 @@ func newExplainProject(t *testing.T) string {
 
 func writeFile(t *testing.T, dir, name, content string) {
 	t.Helper()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644))
+	path := filepath.Join(dir, filepath.FromSlash(name))
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644)) //nolint:gosec // test helper writing into a temp dir
 }
 
 func newExplainExecutor(t *testing.T, dir string, opts ...task.ExecutorOption) *task.Executor {

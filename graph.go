@@ -58,11 +58,19 @@ type GraphEdge struct {
 // Task names that come from dynamic (sh) variables are not resolved, because
 // building the graph never runs commands.
 func (e *Executor) TaskGraph(calls ...*Call) (*TaskGraph, error) {
+	g, _, err := e.buildTaskGraph(e.FastCompiledTask, calls...)
+	return g, err
+}
+
+// buildTaskGraph builds the graph using compile to compile each task, and
+// also returns the compiled task for each node that has one.
+func (e *Executor) buildTaskGraph(compile func(*Call) (*ast.Task, error), calls ...*Call) (*TaskGraph, map[string]*ast.Task, error) {
 	b := &graphBuilder{
-		e:     e,
-		nodes: map[string]*GraphNode{},
-		edges: map[GraphEdge]bool{},
-		out:   map[string][]string{},
+		compile: compile,
+		nodes:   map[string]*GraphNode{},
+		tasks:   map[string]*ast.Task{},
+		edges:   map[GraphEdge]bool{},
+		out:     map[string][]string{},
 	}
 
 	if len(calls) == 0 {
@@ -72,7 +80,7 @@ func (e *Executor) TaskGraph(calls ...*Call) (*TaskGraph, error) {
 	}
 	for _, c := range calls {
 		if _, err := b.visit(c); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -91,12 +99,13 @@ func (e *Executor) TaskGraph(calls ...*Call) (*TaskGraph, error) {
 		return cmp.Compare(position[x.From], position[y.From])
 	})
 	g.Cycles = findGraphCycles(b.order, b.out)
-	return g, nil
+	return g, b.tasks, nil
 }
 
 type graphBuilder struct {
-	e         *Executor
+	compile   func(*Call) (*ast.Task, error)
 	nodes     map[string]*GraphNode
+	tasks     map[string]*ast.Task
 	order     []string
 	edges     map[GraphEdge]bool
 	edgeOrder []*GraphEdge
@@ -106,7 +115,7 @@ type graphBuilder struct {
 // visit adds the called task and everything it runs to the graph, and returns
 // the task's node name.
 func (b *graphBuilder) visit(call *Call) (string, error) {
-	t, err := b.e.FastCompiledTask(call)
+	t, err := b.compile(call)
 	if err != nil {
 		var notFound *errors.TaskNotFoundError
 		if errors.As(err, &notFound) {
@@ -115,14 +124,11 @@ func (b *graphBuilder) visit(call *Call) (string, error) {
 		return b.addNode(&GraphNode{Name: call.Task, Error: err.Error()}), nil
 	}
 
-	name := t.Task
-	if strings.Contains(name, "*") {
-		// Wildcard tasks are shown under the name they were called with.
-		name = call.Task
-	}
+	name := graphNodeName(t, call)
 	if _, ok := b.nodes[name]; ok {
 		return name, nil
 	}
+	b.tasks[name] = t
 	b.addNode(&GraphNode{
 		Name:      name,
 		Desc:      t.Desc,
@@ -152,6 +158,16 @@ func (b *graphBuilder) visit(call *Call) (string, error) {
 		b.addEdge(name, to, EdgeCall)
 	}
 	return name, nil
+}
+
+// graphNodeName is the name of the graph node for a call to t. Wildcard tasks
+// are shown under the name they were called with; other tasks under their
+// own name, even when called through an alias.
+func graphNodeName(t *ast.Task, call *Call) string {
+	if strings.Contains(t.Task, "*") {
+		return call.Task
+	}
+	return t.Task
 }
 
 func (b *graphBuilder) addNode(n *GraphNode) string {

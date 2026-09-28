@@ -218,6 +218,31 @@ func run() error {
 		return e.Explain(ctx, os.Stdout, flags.ListJson, calls...)
 	}
 
+	if flags.Affected {
+		changed, err := e.ChangedFiles(ctx, flags.Since)
+		if err != nil {
+			return err
+		}
+		// With no task names, list what is affected instead of running it.
+		if len(requestedCalls) == 0 {
+			affected, err := e.AffectedTasks(changed)
+			if err != nil {
+				return err
+			}
+			return e.WriteAffected(os.Stdout, affected, flags.ListJson)
+		}
+		calls, err = affectedCalls(e, changed, calls)
+		if err != nil {
+			return err
+		}
+		if len(calls) == 0 {
+			if !flags.Silent {
+				log.Outf(logger.Green, "task: No tasks are affected by the changes\n")
+			}
+			return nil
+		}
+	}
+
 	if flags.Status {
 		return e.Status(ctx, calls...)
 	}
@@ -252,4 +277,24 @@ func runMCPServer() error {
 		fmt.Fprintf(os.Stderr, "task: serving %d tools over MCP: %s\n", len(server.Tools()), strings.Join(server.Tools(), ", "))
 	}
 	return server.Run(ctx)
+}
+
+// affectedCalls returns the calls whose task is affected by the changed
+// files, and reports the others as skipped.
+func affectedCalls(e *task.Executor, changed []string, calls []*task.Call) ([]*task.Call, error) {
+	var affected []*task.Call
+	for _, c := range calls {
+		a, err := e.AffectedCall(changed, c)
+		if err != nil {
+			return nil, err
+		}
+		if a != nil {
+			affected = append(affected, c)
+			continue
+		}
+		if !flags.Silent {
+			e.Logger.Errf(logger.Yellow, "task: %q is not affected by the changes - skipped\n", c.Task)
+		}
+	}
+	return affected, nil
 }

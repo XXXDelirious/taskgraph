@@ -100,6 +100,8 @@ complete -c $GO_TASK_PROGNAME      -l graph                     -d 'print the ta
 complete -c $GO_TASK_PROGNAME      -l graph-format              -d 'output format for --graph' -xa "tree dot mermaid json"
 complete -c $GO_TASK_PROGNAME      -l explain                   -d 'explain whether tasks would run, and why'
 complete -c $GO_TASK_PROGNAME      -l mcp                       -d 'serve tasks as tools over MCP (stdio)'
+complete -c $GO_TASK_PROGNAME      -l affected                  -d 'run or list only tasks affected by git changes'
+complete -c $GO_TASK_PROGNAME      -l since                     -d 'with --affected, compare with this git ref' -x
 complete -c $GO_TASK_PROGNAME -s t -l taskfile                  -d 'choose Taskfile to run'
 complete -c $GO_TASK_PROGNAME -s v -l verbose                   -d 'verbose output'
 complete -c $GO_TASK_PROGNAME      -l version                   -d 'show version'

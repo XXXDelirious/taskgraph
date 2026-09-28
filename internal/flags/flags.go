@@ -91,6 +91,8 @@ var (
 	GraphFormat         string
 	Explain             bool
 	MCP                 bool
+	Affected            bool
+	Since               string
 )
 
 func init() {
@@ -160,6 +162,8 @@ func init() {
 	pflag.BoolVar(&Graph, "graph", false, "Prints the graph of the given tasks (or all tasks) and the tasks they run, instead of running them.")
 	pflag.StringVar(&GraphFormat, "graph-format", "tree", "Output format for --graph: [tree|dot|mermaid|json].")
 	pflag.BoolVar(&Explain, "explain", false, "Explains whether the given tasks and their dependencies would run, and why, without running them. Use with --json for machine-readable output.")
+	pflag.BoolVar(&Affected, "affected", false, "Runs only the given tasks that are affected by changed files (from git). With no task names, lists the affected tasks. Use with --json for machine-readable output.")
+	pflag.StringVar(&Since, "since", "", "With --affected, also count changes committed since this branch, tag or commit (its merge base with HEAD), e.g. origin/main. Uncommitted changes always count.")
 	pflag.BoolVar(&MCP, "mcp", false, "Serves the Taskfile's tasks as tools over the Model Context Protocol (stdio), for coding agents. Task names given as arguments limit which tasks are exposed.")
 
 	// Gentle force experiment will override the force flag and add a new force-all flag
@@ -238,8 +242,16 @@ func Validate() error {
 		return errors.New("task: cannot use --list and --list-all at the same time")
 	}
 
-	if ListJson && !List && !ListAll && !Explain {
-		return errors.New("task: --json only applies to --list, --list-all or --explain")
+	if ListJson && !List && !ListAll && !Explain && !Affected {
+		return errors.New("task: --json only applies to --list, --list-all, --explain or --affected")
+	}
+
+	if Since != "" && !Affected {
+		return errors.New("task: --since only applies to --affected")
+	}
+
+	if Affected && (Watch || Graph || Explain || MCP || List || ListAll || Status) {
+		return errors.New("task: --affected cannot be combined with --watch, --graph, --explain, --mcp, --list, --list-all or --status")
 	}
 
 	if Graph && Explain {

@@ -17,6 +17,7 @@ safe, well-described tools, and monorepos where CI time matters.
 | [MCP server](docs/mcp.md) | `taskgraph --mcp` serves your Taskfile to coding agents (Cursor, GitHub Copilot and other MCP clients) over the Model Context Protocol. Each documented task becomes a tool, with typed inputs from `requires:`. |
 | [`--graph`](docs/graph-and-explain.md#--graph-see-what-runs-what) | Prints the task graph as a tree, Mermaid, Graphviz DOT or JSON, and flags missing tasks and cycles. |
 | [`--explain`](docs/graph-and-explain.md#--explain-why-will-this-run) | Says whether each task would run and why, down to which source files were added, modified or removed. Add `--json` for machine-readable output. |
+| [`--affected`](docs/affected.md) | Runs only the tasks affected by what changed in git (`--since origin/main` for pull requests), following sources, Taskfile edits and the dependency graph. With no task names, lists them, optionally as JSON for CI. |
 | [Cycle detection](docs/graph-and-explain.md#cycle-detection) | Stops at the first cyclic call and names it (`a -> b -> a`), instead of failing after 1,000 calls or hanging. |
 
 ## Install
