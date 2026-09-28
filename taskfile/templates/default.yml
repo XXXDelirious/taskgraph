@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://taskfile.dev/schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/XXXDelirious/taskgraph/main/schema/taskfile.json
 
 version: '3'
 

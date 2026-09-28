@@ -1,6 +1,6 @@
 {
   "yaml.schemas": {
-    "./website/src/public/schema.json": [
+    "./schema/taskfile.json": [
         "Taskfile.yml",
         "Taskfile.yaml",
         "taskfile.yml",
@@ -8,7 +8,7 @@
     ]
   },
   "gopls": {
-      "formatting.local": "github.com/go-task"
+      "formatting.local": "github.com/XXXDelirious/taskgraph"
   },
   "go.formatTool": "gofumpt"
 }

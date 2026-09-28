@@ -59,6 +59,10 @@ Task before the fork is kept, unchanged, at the bottom of this file.
 - `--version` now prints both versions, e.g.
   `taskgraph 0.1.0 (compatible with Task 3.51.1)`.
 - Shell completions are installed for the `taskgraph` command.
+- Removed upstream's documentation website (its blog, team, sponsor and
+  adopter pages and the taskfile.dev deployment). The Taskfile and taskrc
+  JSON schemas moved to `schema/`, and new Taskfiles from `--init` point to
+  taskgraph's schema. taskgraph's own docs are in `docs/`.
 - Release pipeline publishes to GitHub Releases and Linux packages only;
   CI now also runs the test suite with the Go race detector.
 

@@ -87,6 +87,18 @@ and so on.
 - **Binary name:** the command is `taskgraph`. To keep typing `task`, add
   `alias task=taskgraph` to your shell profile.
 
+## Editor support
+
+`schema/taskfile.json` is a JSON schema for Taskfiles, including taskgraph's
+`mcp:` key. Editors using the YAML language server (such as VS Code with the
+Red Hat YAML extension) pick it up from the first line of a Taskfile:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/XXXDelirious/taskgraph/main/schema/taskfile.json
+```
+
+`taskgraph --init` adds this line for you.
+
 ## Shell completion
 
 ```shell
