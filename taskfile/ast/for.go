@@ -3,8 +3,8 @@ package ast
 import (
 	"go.yaml.in/yaml/v3"
 
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/internal/deepcopy"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/internal/deepcopy"
 )
 
 type For struct {

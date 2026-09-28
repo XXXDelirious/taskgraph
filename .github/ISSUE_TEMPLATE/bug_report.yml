@@ -1,13 +1,13 @@
 name: '🐞 Bug Report'
-description: Report a bug in Task.
-labels: ['state: needs-triage']
+description: Report a bug in taskgraph.
+labels: ['needs-triage']
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for your bug report!
 
-        Before submitting, please check the list of [existing issues](https://github.com/go-task/task/issues) and make sure the same bug was not already reported by someone else.
+        Before submitting, please check the list of [existing issues](https://github.com/XXXDelirious/taskgraph/issues) and make sure the same bug was not already reported by someone else.
 
   - type: textarea
     id: description
@@ -25,7 +25,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: What version(s) of Task is the issue occurring on?
+      description: What version(s) of taskgraph is the issue occurring on?
     validations:
       required: true
 
@@ -41,7 +41,7 @@ body:
     id: experiments
     attributes:
       label: Experiments Enabled
-      description: Do you have any experiments enabled? You can check by running `task --experiments`.
+      description: Do you have any experiments enabled? You can check by running `taskgraph --experiments`.
       multiple: true
       options:
         - Env Precedence

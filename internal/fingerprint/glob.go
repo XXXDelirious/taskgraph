@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/go-task/task/v3/internal/execext"
-	"github.com/go-task/task/v3/internal/filepathext"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/internal/execext"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 func Globs(dir string, globs []*ast.Glob) ([]string, error) {

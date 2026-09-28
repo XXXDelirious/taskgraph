@@ -1,0 +1,27 @@
+flowchart LR
+  n0["broken"]
+  n1["does-not-exist (not found)"]
+  n2["build"]
+  n3["gen"]
+  n4["lint"]
+  n5["default"]
+  n6["test"]
+  n7["report"]
+  n8["deploy:staging"]
+  n9["ping"]
+  n10["pong"]
+  n11["deploy:*"]
+  n0 -->|dep| n1
+  n2 -->|dep| n3
+  n2 -->|dep| n4
+  n5 -->|dep| n6
+  n6 -->|dep| n2
+  n6 -.->|call| n7
+  n6 -.->|call| n8
+  n9 -->|dep| n10
+  n10 -.->|call| n9
+  classDef missing stroke:#d00,color:#d00
+  class n1 missing
+  classDef internal stroke-dasharray:4 3
+  class n4 internal
+  linkStyle 7,8 stroke:#d00,stroke-width:2px

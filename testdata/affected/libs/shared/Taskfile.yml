@@ -1,0 +1,10 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build the shared library
+    sources:
+      - '**/*.go'
+      - exclude: '**/*_test.go'
+    cmds:
+      - echo shared

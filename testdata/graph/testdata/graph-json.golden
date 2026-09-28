@@ -1,0 +1,108 @@
+{
+  "nodes": [
+    {
+      "name": "broken"
+    },
+    {
+      "name": "does-not-exist",
+      "missing": true
+    },
+    {
+      "name": "build",
+      "desc": "Build the app",
+      "sources": [
+        "src/**/*.go"
+      ],
+      "generates": [
+        "bin/app"
+      ]
+    },
+    {
+      "name": "gen",
+      "desc": "Generate code"
+    },
+    {
+      "name": "lint",
+      "internal": true
+    },
+    {
+      "name": "default",
+      "desc": "Build and test"
+    },
+    {
+      "name": "test",
+      "desc": "Run the tests"
+    },
+    {
+      "name": "report"
+    },
+    {
+      "name": "deploy:staging",
+      "desc": "Deploy to an environment"
+    },
+    {
+      "name": "ping"
+    },
+    {
+      "name": "pong"
+    },
+    {
+      "name": "deploy:*",
+      "desc": "Deploy to an environment"
+    }
+  ],
+  "edges": [
+    {
+      "from": "broken",
+      "to": "does-not-exist",
+      "kind": "dep"
+    },
+    {
+      "from": "build",
+      "to": "gen",
+      "kind": "dep"
+    },
+    {
+      "from": "build",
+      "to": "lint",
+      "kind": "dep"
+    },
+    {
+      "from": "default",
+      "to": "test",
+      "kind": "dep"
+    },
+    {
+      "from": "test",
+      "to": "build",
+      "kind": "dep"
+    },
+    {
+      "from": "test",
+      "to": "report",
+      "kind": "call"
+    },
+    {
+      "from": "test",
+      "to": "deploy:staging",
+      "kind": "call"
+    },
+    {
+      "from": "ping",
+      "to": "pong",
+      "kind": "dep"
+    },
+    {
+      "from": "pong",
+      "to": "ping",
+      "kind": "call"
+    }
+  ],
+  "cycles": [
+    [
+      "ping",
+      "pong",
+      "ping"
+    ]
+  ]
+}

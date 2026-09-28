@@ -38,7 +38,7 @@ linters:
             - '!**/errors/*.go'
           deny:
             - pkg: errors
-              desc: Use github.com/go-task/task/v3/errors instead
+              desc: Use github.com/XXXDelirious/taskgraph/errors instead
   exclusions:
     presets:
       - comments

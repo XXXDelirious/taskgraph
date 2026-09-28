@@ -4,7 +4,6 @@
 package task_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -15,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-task/task/v3"
-	"github.com/go-task/task/v3/internal/filepathext"
+	task "github.com/XXXDelirious/taskgraph"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
 )
 
 func TestFileWatch(t *testing.T) {
@@ -36,7 +35,7 @@ Task running!
 task: task "default" finished running
 	`)
 
-	var buff bytes.Buffer
+	var buff SyncBuffer
 	e := task.NewExecutor(
 		task.WithDir(dir),
 		task.WithStdout(&buff),
@@ -79,6 +78,51 @@ task: task "default" finished running
 	time.Sleep(200 * time.Millisecond)
 	cancel()
 	assert.Equal(t, expectedOutput, strings.TrimSpace(buff.String()))
+}
+
+func TestFileWatchOnlyRerunsAffectedTask(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	for name, content := range map[string]string{
+		"Taskfile.yml": `version: '3'
+tasks:
+  a:
+    sources: ["a/*"]
+    cmds: ["echo ran-a"]
+  b:
+    sources: ["b/*"]
+    cmds: ["echo ran-b"]
+`,
+		"a/file": "a",
+		"b/file": "b",
+	} {
+		path := filepathext.SmartJoin(dir, name)
+		require.NoError(t, os.MkdirAll(filepathext.SmartJoin(path, ".."), 0o755))
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+	}
+
+	var buff SyncBuffer
+	e := task.NewExecutor(
+		task.WithDir(dir),
+		task.WithStdout(&buff),
+		task.WithStderr(&buff),
+		task.WithWatch(true),
+		task.WithSilent(true),
+	)
+	require.NoError(t, e.Setup())
+
+	go func() {
+		_ = e.Run(context.Background(), &task.Call{Task: "a"}, &task.Call{Task: "b"})
+	}()
+
+	time.Sleep(300 * time.Millisecond)
+	require.NoError(t, os.WriteFile(filepathext.SmartJoin(dir, "a/file"), []byte("a updated"), 0o644))
+	time.Sleep(500 * time.Millisecond)
+
+	out := buff.String()
+	assert.Equal(t, 2, strings.Count(out, "ran-a\n"), out)
+	assert.Equal(t, 1, strings.Count(out, "ran-b\n"), "a change to a's sources must not re-run b\n%s", out)
 }
 
 func TestShouldIgnore(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-task/task/v3"
-	"github.com/go-task/task/v3/internal/filepathext"
+	task "github.com/XXXDelirious/taskgraph"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
 )
 
 func TestInitDir(t *testing.T) {

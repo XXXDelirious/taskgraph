@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 func PrintTasks(l *logger.Logger, t *ast.Taskfile, c []string) {
@@ -278,6 +278,7 @@ func getEnvVarNames() map[string]bool {
 func isEnvVar(key string, envVars map[string]bool) bool {
 	// Filter out auto-generated Task variables
 	if strings.HasPrefix(key, "TASK_") ||
+		strings.HasPrefix(key, "TASKGRAPH_") ||
 		strings.HasPrefix(key, "CLI_") ||
 		strings.HasPrefix(key, "ROOT_") ||
 		key == "TASK" ||

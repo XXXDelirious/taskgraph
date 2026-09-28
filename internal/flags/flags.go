@@ -11,22 +11,22 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/pflag"
 
-	"github.com/go-task/task/v3"
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/experiments"
-	"github.com/go-task/task/v3/internal/env"
-	"github.com/go-task/task/v3/internal/sort"
-	"github.com/go-task/task/v3/taskfile/ast"
-	"github.com/go-task/task/v3/taskrc"
-	taskrcast "github.com/go-task/task/v3/taskrc/ast"
+	task "github.com/XXXDelirious/taskgraph"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/experiments"
+	"github.com/XXXDelirious/taskgraph/internal/env"
+	"github.com/XXXDelirious/taskgraph/internal/sort"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/taskrc"
+	taskrcast "github.com/XXXDelirious/taskgraph/taskrc/ast"
 )
 
-const usage = `Usage: task [flags...] [task...]
+const usage = `Usage: taskgraph [flags...] [task...]
 
 Runs the specified task(s). Falls back to the "default" task if no task name
 was specified, or lists all tasks if an unknown task name was specified.
 
-Example: 'task hello' with the following 'Taskfile.yml' file will generate an
+Example: 'taskgraph hello' with the following 'Taskfile.yml' file will generate an
 'output.txt' file with the content "hello".
 
 '''
@@ -87,6 +87,13 @@ var (
 	Cert                string
 	CertKey             string
 	Interactive         bool
+	Graph               bool
+	GraphFormat         string
+	Explain             bool
+	MCP                 bool
+	Affected            bool
+	Since               string
+	Profile             string
 )
 
 func init() {
@@ -119,8 +126,8 @@ func init() {
 		pflag.PrintDefaults()
 	}
 
-	pflag.BoolVar(&Version, "version", false, "Show Task version.")
-	pflag.BoolVarP(&Help, "help", "h", false, "Shows Task usage.")
+	pflag.BoolVar(&Version, "version", false, "Show taskgraph version.")
+	pflag.BoolVarP(&Help, "help", "h", false, "Shows taskgraph usage.")
 	pflag.BoolVarP(&Init, "init", "i", false, "Creates a new Taskfile.yml in the current folder.")
 	pflag.StringVar(&Completion, "completion", "", "Generates shell completion script.")
 	pflag.BoolVarP(&List, "list", "l", false, "Lists tasks with description of current Taskfile.")
@@ -153,6 +160,13 @@ func init() {
 	pflag.BoolVarP(&Failfast, "failfast", "F", getConfig(config, "FAILFAST", func() *bool { return &config.Failfast }, false), "When running tasks in parallel, stop all tasks if one fails.")
 	pflag.BoolVarP(&Global, "global", "g", false, "Runs global Taskfile, from $HOME/{T,t}askfile.{yml,yaml}.")
 	pflag.BoolVar(&Experiments, "experiments", false, "Lists all the available experiments and whether or not they are enabled.")
+	pflag.BoolVar(&Graph, "graph", false, "Prints the graph of the given tasks (or all tasks) and the tasks they run, instead of running them.")
+	pflag.StringVar(&GraphFormat, "graph-format", "tree", "Output format for --graph: [tree|dot|mermaid|json].")
+	pflag.BoolVar(&Explain, "explain", false, "Explains whether the given tasks and their dependencies would run, and why, without running them. Use with --json for machine-readable output.")
+	pflag.BoolVar(&Affected, "affected", false, "Runs only the given tasks that are affected by changed files (from git). With no task names, lists the affected tasks. Use with --json for machine-readable output.")
+	pflag.StringVar(&Since, "since", "", "With --affected, also count changes committed since this branch, tag or commit (its merge base with HEAD), e.g. origin/main. Uncommitted changes always count.")
+	pflag.StringVar(&Profile, "profile", "", "Writes a trace of the run to this file (Chrome trace format; open it in https://ui.perfetto.dev) and prints the critical path and slowest tasks.")
+	pflag.BoolVar(&MCP, "mcp", false, "Serves the Taskfile's tasks as tools over the Model Context Protocol (stdio), for coding agents. Task names given as arguments limit which tasks are exposed.")
 
 	// Gentle force experiment will override the force flag and add a new force-all flag
 	if experiments.GentleForce.Enabled() {
@@ -230,8 +244,32 @@ func Validate() error {
 		return errors.New("task: cannot use --list and --list-all at the same time")
 	}
 
-	if ListJson && !List && !ListAll {
-		return errors.New("task: --json only applies to --list or --list-all")
+	if ListJson && !List && !ListAll && !Explain && !Affected {
+		return errors.New("task: --json only applies to --list, --list-all, --explain or --affected")
+	}
+
+	if Since != "" && !Affected {
+		return errors.New("task: --since only applies to --affected")
+	}
+
+	if Affected && (Watch || Graph || Explain || MCP || List || ListAll || Status) {
+		return errors.New("task: --affected cannot be combined with --watch, --graph, --explain, --mcp, --list, --list-all or --status")
+	}
+
+	if Graph && Explain {
+		return errors.New("task: cannot use --graph and --explain at the same time")
+	}
+
+	if MCP && (Watch || Graph || Explain || List || ListAll || Status || Summary || Init) {
+		return errors.New("task: --mcp cannot be combined with --watch, --graph, --explain, --list, --list-all, --status, --summary or --init")
+	}
+
+	if Profile != "" && (Watch || Graph || Explain || MCP || List || ListAll || Status || Summary || Dry) {
+		return errors.New("task: --profile cannot be combined with --watch, --graph, --explain, --mcp, --list, --list-all, --status, --summary or --dry")
+	}
+
+	if GraphFormat != "tree" && !Graph {
+		return errors.New("task: --graph-format only applies to --graph")
 	}
 
 	if NoStatus && !ListJson {

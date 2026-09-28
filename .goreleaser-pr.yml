@@ -1,9 +1,11 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
+project_name: taskgraph
+
 builds:
-  - binary: task
-    main: ./cmd/task
+  - binary: taskgraph
+    main: ./cmd/taskgraph
     goos: [windows, darwin, linux]
     goarch: [amd64, arm64]
     env:
@@ -28,4 +30,4 @@ snapshot:
   version_template: 'pr-{{ .ShortCommit }}'
 
 checksum:
-  name_template: 'task_checksums.txt'
+  name_template: 'taskgraph_checksums.txt'

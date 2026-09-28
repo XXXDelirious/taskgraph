@@ -1,6 +1,76 @@
 # Changelog
 
+All notable changes to taskgraph are documented in this file.
+
+taskgraph is a fork of [Task](https://github.com/go-task/task). The history of
+Task before the fork is kept, unchanged, at the bottom of this file.
+
 ## Unreleased
+
+### Features
+
+- Added `taskgraph --mcp`, which serves the Taskfile's tasks as tools over the
+  Model Context Protocol for coding agents. Each task with a description
+  becomes a tool; required variables become typed inputs (with `enum`
+  values), and results include the output and exit code. The read-only
+  `taskgraph_explain` and `taskgraph_graph` tools are always available. Task
+  names given after `--mcp` limit which tasks are exposed, and a new optional
+  `mcp:` task key hides tasks or sets tool hints (`read_only`, `destructive`,
+  `idempotent`). Implements the long-standing upstream request
+  go-task/task#2324.
+- Added `--profile <file>`, which writes a timeline of the run in the Chrome
+  trace format (for ui.perfetto.dev) and prints the critical path and the
+  slowest tasks.
+- Added OpenTelemetry tracing: when `OTEL_EXPORTER_OTLP_ENDPOINT` (or the
+  traces-specific variable) is set, spans for the run, each task, dependency
+  waits, up-to-date checks and each command are exported over OTLP
+  (http/protobuf or grpc). An incoming `TRACEPARENT` is used as the parent,
+  and commands get `TRACEPARENT` so tools they run can join the trace.
+  Implements the upstream feature request go-task/task#2948.
+- Added `--affected` (with optional `--since <ref>`) to run only the given
+  tasks that are affected by changes in git, or, with no task names, to list
+  the affected tasks (`--json` for CI). A task is affected when a changed file
+  matches its sources, its Taskfile changed, or a task it runs is affected.
+- Added `--graph` to print the graph of tasks and the tasks they run, as a
+  tree, Mermaid, Graphviz DOT or JSON (`--graph-format`). Missing tasks,
+  internal tasks and cycles are marked.
+- Added `--explain` to show whether each task and its dependencies would run,
+  and why: which source files were added, modified or removed, which status
+  checks failed, which generated files are missing, and more. Works with
+  `--json`. The checksum method now keeps a per-file record in
+  `.task/manifest/` to support this.
+- Task call cycles are now detected at the first repeated call and reported as
+  `task: Cycle detected in task calls: a -> b -> a` (exit code 208).
+
+### Fixes
+
+- Cyclic dependencies no longer hang watch mode, and no longer deadlock when
+  the tasks use `run: once`.
+
+### Project
+
+- Forked from Task v3.51.1 (upstream commit `24a3ccd`) and renamed to
+  taskgraph. The Go module is now `github.com/XXXDelirious/taskgraph` and the
+  binary is `taskgraph`.
+- taskgraph has its own version numbers, starting at `0.1.0`. Taskfile schema
+  checks and the `TASK_VERSION` variable still use the compatible Task version
+  (`3.51.1`), so existing Taskfiles keep working unchanged. The new
+  `TASKGRAPH_VERSION` variable holds the taskgraph version.
+- `--version` now prints both versions, e.g.
+  `taskgraph 0.1.0 (compatible with Task 3.51.1)`.
+- Shell completions are installed for the `taskgraph` command.
+- Removed upstream's documentation website (its blog, team, sponsor and
+  adopter pages and the taskfile.dev deployment). The Taskfile and taskrc
+  JSON schemas moved to `schema/`, and new Taskfiles from `--init` point to
+  taskgraph's schema. taskgraph's own docs are in `docs/`.
+- Release pipeline publishes to GitHub Releases and Linux packages only;
+  CI now also runs the test suite with the Go race detector.
+
+---
+
+# Task changelog (upstream, before the fork)
+
+## Upstream changes after v3.51.1 (included in the fork)
 
 - Fixed --interactive prompts for required vars sometimes appearing in a random
   order. Prompts now follow the order the vars are declared in the Taskfile.
@@ -368,21 +438,21 @@ Reverted the changes made in #2113 and #2186 that affected the
 
 #### Package API
 
-- The [`Executor`](https://pkg.go.dev/github.com/go-task/task/v3#Executor) now
+- The [`Executor`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph#Executor) now
   uses the functional options pattern (#2085, #2147, #2148 by @pd93).
 - The functional options for the
-  [`taskfile.Reader`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Reader)
+  [`taskfile.Reader`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Reader)
   and
-  [`taskfile.Snippet`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Snippet)
+  [`taskfile.Snippet`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Snippet)
   types no longer have the `Reader`/`Snippet` respective prefixes (#2148 by
   @pd93).
-- [`taskfile.Reader`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Reader)
+- [`taskfile.Reader`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Reader)
   no longer accepts a
-  [`taskfile.Node`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Node).
+  [`taskfile.Node`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Node).
   Instead nodes are passed directly into the
-  [`Reader.Read`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Reader.Read)
+  [`Reader.Read`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Reader.Read)
   method (#2169 by @pd93).
-- [`Reader.Read`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Reader.Read)
+- [`Reader.Read`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Reader.Read)
   also now accepts a [`context.Context`](https://pkg.go.dev/context#Context)
   (#2176 by @pd93).
 
@@ -433,36 +503,36 @@ changes will provide a better long-term experience for our users and allow to
 stabilize the API in the future. #121 now tracks this piece of work.
 
 - Bumped the minimum required Go version to 1.23 (#2059 by @pd93).
-- [`task.InitTaskfile`](https://pkg.go.dev/github.com/go-task/task/v3#InitTaskfile)
+- [`task.InitTaskfile`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph#InitTaskfile)
   (#2011, ff8c913 by @HeCorr and @pd93)
   - No longer accepts an `io.Writer` (output is now the caller's
     responsibility).
   - The path argument can now be a filename OR a directory.
   - The function now returns the full path of the generated file.
-- [`TaskfileDecodeError.WithFileInfo`](https://pkg.go.dev/github.com/go-task/task/v3/errors#TaskfileDecodeError.WithFileInfo)
+- [`TaskfileDecodeError.WithFileInfo`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/errors#TaskfileDecodeError.WithFileInfo)
   now accepts a string instead of the arguments required to generate a snippet
   (#2068 by @pd93).
   - The caller is now expected to create the snippet themselves (see below).
-- [`TaskfileSnippet`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Snippet)
+- [`TaskfileSnippet`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Snippet)
   and related code moved from the `errors` package to the `taskfile` package
   (#2068 by @pd93).
 - Renamed `TaskMissingRequiredVars` to
-  [`TaskMissingRequiredVarsError`](https://pkg.go.dev/github.com/go-task/task/v3/errors#TaskMissingRequiredVarsError)
+  [`TaskMissingRequiredVarsError`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/errors#TaskMissingRequiredVarsError)
   (#2052 by @vmaerten).
 - Renamed `TaskNotAllowedVars` to
-  [`TaskNotAllowedVarsError`](https://pkg.go.dev/github.com/go-task/task/v3/errors#TaskNotAllowedVarsError)
+  [`TaskNotAllowedVarsError`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/errors#TaskNotAllowedVarsError)
   (#2052 by @vmaerten).
 - The
-  [`taskfile.Reader`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Reader)
+  [`taskfile.Reader`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Reader)
   is now constructed using the functional options pattern (#2082 by @pd93).
 - Removed our internal `logger.Logger` from the entire `taskfile` package (#2082
   by @pd93).
   - Users are now expected to pass a custom debug/prompt functions into
-    [`taskfile.Reader`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#Reader)
+    [`taskfile.Reader`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#Reader)
     if they want this functionality by using the new
-    [`WithDebugFunc`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#WithDebugFunc)
+    [`WithDebugFunc`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#WithDebugFunc)
     and
-    [`WithPromptFunc`](https://pkg.go.dev/github.com/go-task/task/v3/taskfile#WithPromptFunc)
+    [`WithPromptFunc`](https://pkg.go.dev/github.com/XXXDelirious/taskgraph/taskfile#WithPromptFunc)
     functional options.
 - Remove `Range` functions in the `taskfile/ast` package in favour of new
   iterator functions (#1798 by @pd93).

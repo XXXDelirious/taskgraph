@@ -10,12 +10,11 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/pflag"
 
-	"github.com/go-task/task/v3/errors"
+	"github.com/XXXDelirious/taskgraph/errors"
 )
 
 const (
 	changelogSource = "CHANGELOG.md"
-	changelogTarget = "website/src/docs/changelog.md"
 	versionFile     = "internal/version/version.txt"
 )
 
@@ -91,45 +90,16 @@ func bumpVersion(version *semver.Version, verb string) error {
 }
 
 func changelog(version *semver.Version) error {
-	// Open changelog target file
-	b, err := os.ReadFile(changelogTarget)
+	b, err := os.ReadFile(changelogSource)
 	if err != nil {
 		return err
 	}
-
-	// Get the current frontmatter
-	currentChangelog := string(b)
-	sections := strings.SplitN(currentChangelog, "---", 3)
-	if len(sections) != 3 {
-		return errors.New("error: invalid frontmatter")
-	}
-	frontmatter := strings.TrimSpace(sections[1])
-
-	// Open changelog source file
-	b, err = os.ReadFile(changelogSource)
-	if err != nil {
-		return err
-	}
-	changelog := string(b)
 	date := time.Now().Format("2006-01-02")
 
 	// Replace "Unreleased" with the new version and date
-	changelog = changelogReleaseRegex.ReplaceAllString(changelog, fmt.Sprintf("## v%s - %s", version, date))
+	changelog := changelogReleaseRegex.ReplaceAllString(string(b), fmt.Sprintf("## v%s - %s", version, date))
 
-	// Write the changelog to the source file
-	if err := os.WriteFile(changelogSource, []byte(changelog), 0o644); err != nil { //nolint:gosec
-		return err
-	}
-
-	// Wrap the changelog content with v-pre directive for VitePress to prevent
-	// Vue from interpreting template syntax like {{.TASK_VERSION}}
-	changelogWithVPre := strings.Replace(changelog, "# Changelog\n\n", "# Changelog\n\n::: v-pre\n\n", 1) + "\n:::"
-
-	// Add the frontmatter to the changelog
-	changelogWithFrontmatter := fmt.Sprintf("---\n%s\n---\n\n%s", frontmatter, changelogWithVPre)
-
-	// Write the changelog to the target file
-	return os.WriteFile(changelogTarget, []byte(changelogWithFrontmatter), 0o644) //nolint:gosec
+	return os.WriteFile(changelogSource, []byte(changelog), 0o644) //nolint:gosec
 }
 
 func setVersionFile(fileName string, version *semver.Version) error {

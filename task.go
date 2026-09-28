@@ -6,23 +6,25 @@ import (
 	"os"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
 	"mvdan.cc/sh/v3/interp"
 
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/internal/env"
-	"github.com/go-task/task/v3/internal/execext"
-	"github.com/go-task/task/v3/internal/fingerprint"
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/internal/output"
-	"github.com/go-task/task/v3/internal/slicesext"
-	"github.com/go-task/task/v3/internal/sort"
-	"github.com/go-task/task/v3/internal/summary"
-	"github.com/go-task/task/v3/internal/templater"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/internal/env"
+	"github.com/XXXDelirious/taskgraph/internal/execext"
+	"github.com/XXXDelirious/taskgraph/internal/fingerprint"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/output"
+	"github.com/XXXDelirious/taskgraph/internal/slicesext"
+	"github.com/XXXDelirious/taskgraph/internal/sort"
+	"github.com/XXXDelirious/taskgraph/internal/summary"
+	"github.com/XXXDelirious/taskgraph/internal/templater"
+	"github.com/XXXDelirious/taskgraph/internal/tracing"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 const (
@@ -53,11 +55,6 @@ func (e *Executor) Run(ctx context.Context, calls ...*Call) error {
 		}
 
 		if task.Internal {
-			if _, ok := err.(*errors.TaskNotFoundError); ok {
-				if _, err := e.ListTasks(ListOptions{ListOnlyTasksWithDescriptions: true}); err != nil {
-					return err
-				}
-			}
 			return &errors.TaskInternalError{TaskName: call.Task}
 		}
 	}
@@ -66,7 +63,7 @@ func (e *Executor) Run(ctx context.Context, calls ...*Call) error {
 		for i, c := range calls {
 			compiledTask, err := e.FastCompiledTask(c)
 			if err != nil {
-				return nil
+				return err
 			}
 			summary.PrintSpaceBetweenSummaries(e.Logger, i)
 			summary.PrintTask(e.Logger, compiledTask)
@@ -125,7 +122,7 @@ func (e *Executor) splitRegularAndWatchCalls(calls ...*Call) (regularCalls []*Ca
 }
 
 // RunTask runs a task by its name
-func (e *Executor) RunTask(ctx context.Context, call *Call) error {
+func (e *Executor) RunTask(ctx context.Context, call *Call) (err error) {
 	// Inject prompted vars into call if available
 	if e.promptedVars != nil {
 		if call.Vars == nil {
@@ -143,8 +140,21 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 	if err != nil {
 		return err
 	}
+
+	// Calling a task with the same variables from inside itself can never
+	// finish, so report the cycle instead of recursing until the call limit.
+	self := newCallFrame(t, call)
+	if cycle := findCycle(call.parents, self); cycle != nil {
+		return &errors.TaskCycleError{Cycle: cycle}
+	}
+	parents := call.child(self)
+
+	ctx, span := e.tracer.Start(ctx, tracing.KindTask, call.Task, "task.name", t.Task)
+	defer func() { span.Finish(err) }()
+
 	if !shouldRunOnCurrentPlatform(t.Platforms) {
 		e.Logger.VerboseOutf(logger.Yellow, `task: %q not for current platform - ignored\n`, call.Task)
+		span.SetStatus(tracing.StatusSkipped)
 		return nil
 	}
 
@@ -169,6 +179,7 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 			Env:     env.Get(t),
 		}); err != nil {
 			e.Logger.VerboseOutf(logger.Yellow, "task: if condition not met - skipped: %q\n", call.Task)
+			span.SetStatus(tracing.StatusSkipped)
 			return nil
 		}
 	}
@@ -201,12 +212,23 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 		}
 	}
 
+	var waitSpan *tracing.Span
+	if e.concurrencySemaphore != nil {
+		_, waitSpan = e.tracer.Start(ctx, tracing.KindWait, "waiting for a concurrency slot")
+	}
 	release := e.acquireConcurrencyLimit()
+	waitSpan.Finish(nil)
 	defer release()
 
 	if err = e.startExecution(ctx, t, func(ctx context.Context) error {
 		e.Logger.VerboseErrf(logger.Magenta, "task: %q started\n", call.Task)
-		if err := e.runDeps(ctx, t); err != nil {
+		depsCtx, depsSpan := ctx, (*tracing.Span)(nil)
+		if len(t.Deps) > 0 {
+			depsCtx, depsSpan = e.tracer.Start(ctx, tracing.KindDeps, "deps")
+		}
+		err := e.runDeps(depsCtx, t, parents)
+		depsSpan.Finish(err)
+		if err != nil {
 			return err
 		}
 
@@ -216,8 +238,10 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 				return err
 			}
 
+			_, checkSpan := e.tracer.Start(ctx, tracing.KindCheck, "up-to-date check")
 			preCondMet, err := e.areTaskPreconditionsMet(ctx, t)
 			if err != nil {
+				checkSpan.Finish(err)
 				return err
 			}
 
@@ -232,11 +256,14 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 				fingerprint.WithDry(e.Dry),
 				fingerprint.WithLogger(e.Logger),
 			)
+			checkSpan.SetAttr("up_to_date", strconv.FormatBool(upToDate && preCondMet))
+			checkSpan.Finish(err)
 			if err != nil {
 				return err
 			}
 
 			if upToDate && preCondMet {
+				span.SetStatus(tracing.StatusUpToDate)
 				if e.Verbose || (!call.Silent && !t.IsSilent() && !e.Taskfile.Silent && !e.Silent) {
 					name := t.Name()
 					if e.OutputStyle.Name == "prefixed" {
@@ -268,11 +295,11 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 
 		for i := range t.Cmds {
 			if t.Cmds[i].Defer {
-				defer e.runDeferred(t, call, i, t.Vars, &deferredExitCode)
+				defer e.runDeferred(ctx, t, call, parents, i, t.Vars, &deferredExitCode)
 				continue
 			}
 
-			if err := e.runCommand(ctx, t, call, i); err != nil {
+			if err := e.runCommand(ctx, t, call, parents, i); err != nil {
 				if err2 := e.statusOnError(t); err2 != nil {
 					e.Logger.VerboseErrf(logger.Yellow, "task: error cleaning status on error: %v\n", err2)
 				}
@@ -292,6 +319,11 @@ func (e *Executor) RunTask(ctx context.Context, call *Call) error {
 		e.Logger.VerboseErrf(logger.Magenta, "task: %q finished\n", call.Task)
 		return nil
 	}); err != nil {
+		// A cycle is reported once, not wrapped again at every level of it.
+		var cycleErr *errors.TaskCycleError
+		if errors.As(err, &cycleErr) {
+			return cycleErr
+		}
 		return &errors.TaskRunError{TaskName: t.Name(), Err: err}
 	}
 
@@ -315,7 +347,7 @@ func (e *Executor) mkdir(t *ast.Task) error {
 	return nil
 }
 
-func (e *Executor) runDeps(ctx context.Context, t *ast.Task) error {
+func (e *Executor) runDeps(ctx context.Context, t *ast.Task, parents []callFrame) error {
 	g := &errgroup.Group{}
 	if e.Failfast || t.Failfast {
 		g, ctx = errgroup.WithContext(ctx)
@@ -326,7 +358,7 @@ func (e *Executor) runDeps(ctx context.Context, t *ast.Task) error {
 
 	for _, d := range t.Deps {
 		g.Go(func() error {
-			err := e.RunTask(ctx, &Call{Task: d.Task, Vars: d.Vars, Silent: d.Silent, Indirect: true})
+			err := e.RunTask(ctx, &Call{Task: d.Task, Vars: d.Vars, Silent: d.Silent, Indirect: true, parents: parents})
 			if err != nil {
 				return err
 			}
@@ -337,8 +369,10 @@ func (e *Executor) runDeps(ctx context.Context, t *ast.Task) error {
 	return g.Wait()
 }
 
-func (e *Executor) runDeferred(t *ast.Task, call *Call, i int, vars *ast.Vars, deferredExitCode *uint8) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (e *Executor) runDeferred(ctx context.Context, t *ast.Task, call *Call, parents []callFrame, i int, vars *ast.Vars, deferredExitCode *uint8) {
+	// Deferred commands run even when the task was cancelled, but keep the
+	// context's values, such as the trace span.
+	ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	defer cancel()
 
 	cmd := t.Cmds[i]
@@ -354,12 +388,12 @@ func (e *Executor) runDeferred(t *ast.Task, call *Call, i int, vars *ast.Vars, d
 	cmd.If = templater.ReplaceWithExtra(cmd.If, cache, extra)
 	cmd.Vars = templater.ReplaceVarsWithExtra(cmd.Vars, cache, extra)
 
-	if err := e.runCommand(ctx, t, call, i); err != nil {
+	if err := e.runCommand(ctx, t, call, parents, i); err != nil {
 		e.Logger.VerboseErrf(logger.Yellow, "task: ignored error in deferred cmd: %s\n", err.Error())
 	}
 }
 
-func (e *Executor) runCommand(ctx context.Context, t *ast.Task, call *Call, i int) error {
+func (e *Executor) runCommand(ctx context.Context, t *ast.Task, call *Call, parents []callFrame, i int) error {
 	cmd := t.Cmds[i]
 
 	// Check if condition for any command type
@@ -379,7 +413,7 @@ func (e *Executor) runCommand(ctx context.Context, t *ast.Task, call *Call, i in
 		reacquire := e.releaseConcurrencyLimit()
 		defer reacquire()
 
-		err := e.RunTask(ctx, &Call{Task: cmd.Task, Vars: cmd.Vars, Silent: cmd.Silent, Indirect: true})
+		err := e.RunTask(ctx, &Call{Task: cmd.Task, Vars: cmd.Vars, Silent: cmd.Silent, Indirect: true, parents: parents})
 		var exitCode interp.ExitStatus
 		if errors.As(err, &exitCode) && cmd.IgnoreError {
 			e.Logger.VerboseErrf(logger.Yellow, "task: [%s] task error ignored: %v\n", t.Name(), err)
@@ -411,16 +445,18 @@ func (e *Executor) runCommand(ctx context.Context, t *ast.Task, call *Call, i in
 		}
 		stdOut, stdErr, closer := outputWrapper.WrapWriter(e.Stdout, e.Stderr, t.Prefix, outputTemplater)
 
+		ctx, cmdSpan := e.tracer.Start(ctx, tracing.KindCmd, commandLabel(cmd.Cmd), "task.name", t.Name(), "cmd", cmd.Cmd)
 		err = execext.RunCommand(ctx, &execext.RunCommandOptions{
 			Command:   cmd.Cmd,
 			Dir:       t.Dir,
-			Env:       env.Get(t),
+			Env:       commandEnv(ctx, t),
 			PosixOpts: slicesext.UniqueJoin(e.Taskfile.Set, t.Set, cmd.Set),
 			BashOpts:  slicesext.UniqueJoin(e.Taskfile.Shopt, t.Shopt, cmd.Shopt),
 			Stdin:     e.Stdin,
 			Stdout:    stdOut,
 			Stderr:    stdErr,
 		})
+		cmdSpan.Finish(err)
 		if closeErr := closer(err); closeErr != nil {
 			e.Logger.Errf(logger.Red, "task: unable to close writer: %v\n", closeErr)
 		}
@@ -433,6 +469,35 @@ func (e *Executor) runCommand(ctx context.Context, t *ast.Task, call *Call, i in
 	default:
 		return nil
 	}
+}
+
+// commandEnv returns the environment for a task's command. When the command
+// runs inside an OpenTelemetry trace, TRACEPARENT is set so tools that support
+// it can add their own spans to the trace.
+func commandEnv(ctx context.Context, t *ast.Task) []string {
+	environ := env.Get(t)
+	traceparent := tracing.TraceParent(ctx)
+	if traceparent == "" {
+		return environ
+	}
+	if environ == nil {
+		environ = os.Environ()
+	}
+	environ = slices.DeleteFunc(slices.Clone(environ), func(kv string) bool {
+		return strings.HasPrefix(kv, "TRACEPARENT=")
+	})
+	return append(environ, "TRACEPARENT="+traceparent)
+}
+
+// commandLabel shortens a command to its first line, for span names.
+func commandLabel(cmd string) string {
+	label, _, multiline := strings.Cut(strings.TrimSpace(cmd), "\n")
+	if len(label) > 80 {
+		label = label[:77] + "..."
+	} else if multiline {
+		label += " ..."
+	}
+	return label
 }
 
 func (e *Executor) startExecution(ctx context.Context, t *ast.Task, execute func(ctx context.Context) error) error {
@@ -455,7 +520,9 @@ func (e *Executor) startExecution(ctx context.Context, t *ast.Task, execute func
 		reacquire := e.releaseConcurrencyLimit()
 		defer reacquire()
 
+		_, waitSpan := e.tracer.Start(ctx, tracing.KindWait, "waiting for another run of "+t.Name())
 		<-otherExecutionCtx.Done()
+		waitSpan.Finish(nil)
 		return nil
 	}
 

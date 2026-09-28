@@ -9,14 +9,14 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/go-task/task/v3/errors"
-	"github.com/go-task/task/v3/internal/deepcopy"
-	"github.com/go-task/task/v3/internal/env"
-	"github.com/go-task/task/v3/internal/execext"
-	"github.com/go-task/task/v3/internal/filepathext"
-	"github.com/go-task/task/v3/internal/fingerprint"
-	"github.com/go-task/task/v3/internal/templater"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/errors"
+	"github.com/XXXDelirious/taskgraph/internal/deepcopy"
+	"github.com/XXXDelirious/taskgraph/internal/env"
+	"github.com/XXXDelirious/taskgraph/internal/execext"
+	"github.com/XXXDelirious/taskgraph/internal/filepathext"
+	"github.com/XXXDelirious/taskgraph/internal/fingerprint"
+	"github.com/XXXDelirious/taskgraph/internal/templater"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 // CompiledTask returns a copy of a task, but replacing variables in almost all
@@ -73,6 +73,7 @@ func (e *Executor) CompiledTaskForTaskList(call *Call) (*ast.Task, error) {
 		Watch:                origTask.Watch,
 		Namespace:            origTask.Namespace,
 		Failfast:             origTask.Failfast,
+		MCP:                  origTask.MCP.DeepCopy(),
 	}, nil
 }
 
@@ -140,6 +141,7 @@ func (e *Executor) compiledTask(call *Call, evaluateShVars bool) (*ast.Task, err
 		Requires:             requires,
 		Watch:                origTask.Watch,
 		Failfast:             origTask.Failfast,
+		MCP:                  origTask.MCP.DeepCopy(),
 		Namespace:            origTask.Namespace,
 		FullName:             fullName,
 	}

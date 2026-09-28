@@ -26,7 +26,7 @@ func (err TaskfileNotFoundError) Error() string {
 		walkText = " (or any of the parent directories)."
 	}
 	if err.AskInit {
-		walkText += " Run `task --init` to create a new Taskfile."
+		walkText += " Run `taskgraph --init` to create a new Taskfile."
 	}
 	return fmt.Sprintf(`task: No Taskfile found at %q%s`, filepath.ToSlash(err.URI), walkText)
 }

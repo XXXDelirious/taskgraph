@@ -1,0 +1,44 @@
+version: '3'
+
+tasks:
+  build:
+    deps: [gen, check]
+    sources: ['src/*.txt']
+    generates: ['out.txt']
+    cmds:
+      - cat src/*.txt > out.txt
+      - task: notify
+
+  gen:
+    status: ['test -f src/gen.txt']
+    cmds:
+      - echo gen > src/gen.txt
+
+  check:
+    if: 'false'
+    cmds:
+      - echo never
+
+  notify:
+    cmds:
+      - echo notify
+
+  stamped:
+    method: timestamp
+    sources: ['src/*.txt']
+    generates: ['stamp.txt']
+    cmds:
+      - touch stamp.txt
+
+  needs-var:
+    requires:
+      vars: [TARGET]
+    cmds:
+      - echo {{.TARGET}}
+
+  guarded:
+    preconditions:
+      - sh: 'false'
+        msg: the moon is not full
+    cmds:
+      - echo guarded

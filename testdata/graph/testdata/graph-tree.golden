@@ -1,0 +1,16 @@
+broken
+└── does-not-exist [not found]
+default
+└── test
+    ├── build
+    │   ├── gen
+    │   └── lint [internal]
+    ├── report [call]
+    └── deploy:staging [call]
+deploy:*
+ping
+└── pong
+    └── ping [call]  ⟲ cycle
+
+Cycles:
+  ping -> pong -> ping

@@ -188,15 +188,15 @@ func TestSignalSentToProcessGroup(t *testing.T) {
 }
 
 func getTaskPath() (string, error) {
-	if info, err := os.Stat("./bin/task"); err == nil {
-		return info.Name(), nil
+	if _, err := os.Stat("./bin/taskgraph"); err == nil {
+		return filepath.Abs("./bin/taskgraph")
 	}
 
-	if path, err := exec.LookPath("task"); err == nil {
+	if path, err := exec.LookPath("taskgraph"); err == nil {
 		return path, nil
 	}
 
-	return "", errors.New("task: \"task\" binary was not found!")
+	return "", errors.New("task: \"taskgraph\" binary was not found! Build it with: go build -o bin/taskgraph ./cmd/taskgraph")
 }
 
 // Return the difference of the two lists: the elements that are present in the first

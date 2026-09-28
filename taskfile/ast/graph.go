@@ -7,7 +7,6 @@ import (
 
 	"github.com/dominikbraun/graph"
 	"github.com/dominikbraun/graph/draw"
-	"golang.org/x/sync/errgroup"
 )
 
 type TaskfileGraph struct {
@@ -67,46 +66,31 @@ func (tfg *TaskfileGraph) Merge() (*Taskfile, error) {
 			return nil, err
 		}
 
-		// Create an error group to wait for all the included Taskfiles to be merged with all its parents
-		var g errgroup.Group
-
-		// Loop over edge that leads to a vertex that includes the current vertex
+		// Merge the included Taskfile into every Taskfile that includes it.
+		// This is done one parent at a time: all of them read the included
+		// Taskfile, and merging may modify it.
 		for _, edge := range predecessorMap[hash] {
-
-			// Start a goroutine to process each included Taskfile
-			g.Go(func() error {
-				// Get the base vertex
-				vertex, err := tfg.Vertex(edge.Source)
-				if err != nil {
-					return err
-				}
-
-				// Get the merge options
-				includes, ok := edge.Properties.Data.([]*Include)
-				if !ok {
-					return fmt.Errorf("task: Failed to get merge options")
-				}
-
-				// Merge the included Taskfiles into the parent Taskfile
-				for _, include := range includes {
-					if err := vertex.Taskfile.Merge(
-						includedVertex.Taskfile,
-						include,
-					); err != nil {
-						return err
-					}
-				}
-
-				return nil
-			})
-			if err := g.Wait(); err != nil {
+			// Get the base vertex
+			vertex, err := tfg.Vertex(edge.Source)
+			if err != nil {
 				return nil, err
 			}
-		}
 
-		// Wait for all the go routines to finish
-		if err := g.Wait(); err != nil {
-			return nil, err
+			// Get the merge options
+			includes, ok := edge.Properties.Data.([]*Include)
+			if !ok {
+				return nil, fmt.Errorf("task: Failed to get merge options")
+			}
+
+			// Merge the included Taskfiles into the parent Taskfile
+			for _, include := range includes {
+				if err := vertex.Taskfile.Merge(
+					includedVertex.Taskfile,
+					include,
+				); err != nil {
+					return nil, err
+				}
+			}
 		}
 	}
 

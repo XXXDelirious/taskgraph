@@ -1,0 +1,26 @@
+version: '3'
+
+tasks:
+  default:
+    deps: [a, skipped]
+    cmds:
+      - echo "$TRACEPARENT" > traceparent.txt
+      - task: fresh
+
+  a:
+    cmds:
+      - echo a
+
+  skipped:
+    if: 'false'
+    cmds:
+      - echo never
+
+  fresh:
+    status: ['true']
+    cmds:
+      - echo never
+
+  broken:
+    cmds:
+      - exit 1

@@ -1,0 +1,26 @@
+digraph taskgraph {
+  rankdir=LR;
+  node [shape=box, style=rounded, fontname="Helvetica"];
+  edge [fontname="Helvetica", fontsize=10];
+  "broken";
+  "does-not-exist" [color="red", fontcolor="red", label="does-not-exist\n(not found)"];
+  "build" [tooltip="Build the app"];
+  "gen" [tooltip="Generate code"];
+  "lint" [style="rounded,dashed"];
+  "default" [tooltip="Build and test"];
+  "test" [tooltip="Run the tests"];
+  "report";
+  "deploy:staging" [tooltip="Deploy to an environment"];
+  "ping";
+  "pong";
+  "deploy:*" [tooltip="Deploy to an environment"];
+  "broken" -> "does-not-exist" [label="dep"];
+  "build" -> "gen" [label="dep"];
+  "build" -> "lint" [label="dep"];
+  "default" -> "test" [label="dep"];
+  "test" -> "build" [label="dep"];
+  "test" -> "report" [label="call", style="dashed"];
+  "test" -> "deploy:staging" [label="call", style="dashed"];
+  "ping" -> "pong" [label="dep", color="red", fontcolor="red", penwidth=2];
+  "pong" -> "ping" [label="call", style="dashed", color="red", fontcolor="red", penwidth=2];
+}

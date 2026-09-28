@@ -10,10 +10,11 @@ import (
 	"github.com/puzpuzpuz/xsync/v4"
 	"github.com/sajari/fuzzy"
 
-	"github.com/go-task/task/v3/internal/logger"
-	"github.com/go-task/task/v3/internal/output"
-	"github.com/go-task/task/v3/internal/sort"
-	"github.com/go-task/task/v3/taskfile/ast"
+	"github.com/XXXDelirious/taskgraph/internal/logger"
+	"github.com/XXXDelirious/taskgraph/internal/output"
+	"github.com/XXXDelirious/taskgraph/internal/sort"
+	"github.com/XXXDelirious/taskgraph/internal/tracing"
+	"github.com/XXXDelirious/taskgraph/taskfile/ast"
 )
 
 type (
@@ -81,6 +82,7 @@ type (
 		executionHashes      map[string]context.Context
 		executionHashesMutex sync.Mutex
 		watchedDirs          *xsync.Map[string, bool]
+		tracer               *tracing.Tracer
 	}
 	TempDir struct {
 		Remote      string
@@ -616,4 +618,18 @@ type failfastOption struct {
 
 func (o *failfastOption) ApplyToExecutor(e *Executor) {
 	e.Failfast = o.failfast
+}
+
+// WithTracer records the executor's work (tasks, deps, checks and commands)
+// with the given tracer. A nil tracer records nothing.
+func WithTracer(tracer *tracing.Tracer) ExecutorOption {
+	return &tracerOption{tracer}
+}
+
+type tracerOption struct {
+	tracer *tracing.Tracer
+}
+
+func (o *tracerOption) ApplyToExecutor(e *Executor) {
+	e.tracer = o.tracer
 }

@@ -1,0 +1,52 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Build and test
+    deps: [test]
+
+  build:
+    desc: Build the app
+    deps: [gen, lint]
+    sources: ['src/**/*.go']
+    generates: ['bin/app']
+    cmds:
+      - echo build
+
+  gen:
+    desc: Generate code
+    cmds:
+      - echo gen
+
+  lint:
+    internal: true
+    cmds:
+      - echo lint
+
+  test:
+    desc: Run the tests
+    deps: [build]
+    vars:
+      ENV: staging
+    cmds:
+      - task: report
+      - task: 'deploy:{{.ENV}}'
+
+  report:
+    cmds:
+      - echo report
+
+  'deploy:*':
+    desc: Deploy to an environment
+    cmds:
+      - echo deploy
+
+  broken:
+    deps: [does-not-exist]
+
+  ping:
+    deps: [pong]
+
+  pong:
+    cmds:
+      - task: ping

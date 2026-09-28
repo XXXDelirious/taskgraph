@@ -5,16 +5,16 @@ import (
 	"fmt"
 )
 
-//go:embed completion/bash/task.bash
+//go:embed completion/bash/taskgraph.bash
 var completionBash string
 
-//go:embed completion/fish/task.fish
+//go:embed completion/fish/taskgraph.fish
 var completionFish string
 
-//go:embed completion/ps/task.ps1
+//go:embed completion/ps/taskgraph.ps1
 var completionPowershell string
 
-//go:embed completion/zsh/_task
+//go:embed completion/zsh/_taskgraph
 var completionZsh string
 
 func Completion(completion string) (string, error) {
