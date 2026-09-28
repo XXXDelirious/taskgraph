@@ -55,11 +55,6 @@ func (e *Executor) Run(ctx context.Context, calls ...*Call) error {
 		}
 
 		if task.Internal {
-			if _, ok := err.(*errors.TaskNotFoundError); ok {
-				if _, err := e.ListTasks(ListOptions{ListOnlyTasksWithDescriptions: true}); err != nil {
-					return err
-				}
-			}
 			return &errors.TaskInternalError{TaskName: call.Task}
 		}
 	}
@@ -68,7 +63,7 @@ func (e *Executor) Run(ctx context.Context, calls ...*Call) error {
 		for i, c := range calls {
 			compiledTask, err := e.FastCompiledTask(c)
 			if err != nil {
-				return nil
+				return err
 			}
 			summary.PrintSpaceBetweenSummaries(e.Logger, i)
 			summary.PrintTask(e.Logger, compiledTask)

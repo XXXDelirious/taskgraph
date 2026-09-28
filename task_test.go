@@ -1754,6 +1754,29 @@ func TestSummary(t *testing.T) {
 	assert.Equal(t, expectedOutput, buff.String())
 }
 
+func TestSummaryReportsCompileErrors(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeFile(t, dir, "Taskfile.yml", `version: '3'
+tasks:
+  broken:
+    summary: Broken on purpose
+    dir: '{{.NAME | noSuchFunction}}'
+    cmds:
+      - echo hi
+`)
+	e := task.NewExecutor(
+		task.WithDir(dir),
+		task.WithStdout(io.Discard),
+		task.WithStderr(io.Discard),
+		task.WithSummary(true),
+	)
+	require.NoError(t, e.Setup())
+	err := e.Run(t.Context(), &task.Call{Task: "broken"})
+	assert.ErrorContains(t, err, "noSuchFunction")
+}
+
 func TestWhenNoDirAttributeItRunsInSameDirAsTaskfile(t *testing.T) {
 	t.Parallel()
 
